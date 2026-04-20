@@ -1,3 +1,5 @@
 pandas
 ipykernel
 setuptools
+google-cloud-bigquery
+db-dtypes
