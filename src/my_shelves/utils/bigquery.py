@@ -1,3 +1,18 @@
+"""
+bigquery.py
+-----------
+This module provides functions to interact with the BigQuery database
+for the my-shelves project.
+
+It handles all data retrieval and querying operations against the
+BigQuery tables, including fetching books and other related data.
+
+Usage
+-----
+    from bigquery import get_book
+
+    df = get_book(22077083)
+"""
 from google.cloud import bigquery
 import pandas as pd
 
