@@ -1,7 +1,7 @@
 #################### PACKAGE ACTIONS ###################
 
 install_package:
-	@pip uninstall -y myshelves || :
+	@pip uninstall -y my_shelves || :
 	@pip install -e .
 
 pylint:
