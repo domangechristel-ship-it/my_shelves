@@ -1,3 +1,7 @@
+"""
+Module to retrieve data from csv
+"""
+
 import pandas as pd
 
 def get_books(lang: str = 'ENG', nrows: int = None) -> pd.DataFrame:
