@@ -1,2 +1,7 @@
+default: pylint pytest
+
 pylint:
-	pylint $(git ls-files '*.py')
+	find . -iname "*.py" -not -path "./tests/*" | xargs -n1 -I {}  pylint --output-format=colorized {}; true
+
+pytest:
+	PYTHONDONTWRITEBYTECODE=1 pytest -v --color=yes
