@@ -11,11 +11,10 @@ Usage
 -----
     from bigquery import get_book
 
-    df = get_book(22077083)
+    df = get_book(22077083,GCP_PROJECT,BQ_DATASET)
 """
-from google.cloud import bigquery
-from my_shelves.utils.params import *
 import pandas as pd
+from google.cloud import bigquery
 
 def get_book(
         book_id: int,
