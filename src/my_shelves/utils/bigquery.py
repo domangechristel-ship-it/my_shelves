@@ -31,7 +31,7 @@ def get_book(book_id: int) -> pd.DataFrame:
         DataFrame containing the matching book row(s).
     """
 
-    client = bigquery.Client(project="my-shelves-493916")
+    client = bigquery.Client()
 
     query = """
         SELECT *
