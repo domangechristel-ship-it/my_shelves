@@ -11,15 +11,13 @@ Usage
 -----
     from bigquery import get_book
 
-    df = get_book(22077083,GCP_PROJECT,BQ_DATASET)
+    df = get_book(22077083)
 """
 import pandas as pd
 from google.cloud import bigquery
 
 def get_book(
-        book_id: int,
-        gcp_project:str,
-        bq_dataset:str
+        book_id: int
     ) -> pd.DataFrame:
     """
     Retrieve a book information from BigQuery based on its book_id.
@@ -36,8 +34,7 @@ def get_book(
     """
 
     client = bigquery.Client()
-    table = "books"
-    full_table_name = f"{gcp_project}.{bq_dataset}.{table}"
+    full_table_name = 'books_dataset.books'
     query = f"""
         SELECT *
         FROM {full_table_name}
