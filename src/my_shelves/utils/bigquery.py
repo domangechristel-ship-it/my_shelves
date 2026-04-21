@@ -14,9 +14,14 @@ Usage
     df = get_book(22077083)
 """
 from google.cloud import bigquery
+from my_shelves.utils.params import *
 import pandas as pd
 
-def get_book(book_id: int) -> pd.DataFrame:
+def get_book(
+        book_id: int,
+        gcp_project:str,
+        bq_dataset:str
+    ) -> pd.DataFrame:
     """
     Retrieve a book information from BigQuery based on its book_id.
 
@@ -32,10 +37,11 @@ def get_book(book_id: int) -> pd.DataFrame:
     """
 
     client = bigquery.Client()
-
-    query = """
+    table = "books"
+    full_table_name = f"{gcp_project}.{bq_dataset}.{table}"
+    query = f"""
         SELECT *
-        FROM my-shelves-493916.books_dataset.books
+        FROM {full_table_name}
         WHERE book_id = @book_id
     """
 
