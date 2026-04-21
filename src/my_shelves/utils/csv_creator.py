@@ -31,8 +31,9 @@ Example
 
 
 """
-import pandas as pd
 import os
+import pandas as pd
+
 
 def append_unique_rows(df: pd.DataFrame, csv_file: str, key: str = "book_id"):
     """
