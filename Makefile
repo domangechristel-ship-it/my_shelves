@@ -36,3 +36,7 @@ deploy_to_cloud_run:
 		--region ${GCP_REGION}
 
 deploy: build_for_production push_image_production deploy_to_cloud_run
+
+
+deploy_web_app:
+	gcloud run deploy --region ${GCP_REGION} --source src/app my-shelves
