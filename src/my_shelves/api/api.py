@@ -15,7 +15,7 @@ Or via Docker:
 """
 
 from fastapi import FastAPI, HTTPException
-from my_shelves.utils.bigquery import get_book
+from my_shelves.utils.bigquery import get_book,get_country_counts
 
 app = FastAPI()
 
@@ -62,3 +62,9 @@ def read_book(book_id: int = 22077083):
         'num_pages': str(row['num_pages']),
         'series': str(row['series'])
     }
+
+@app.get('/country')
+def read_country_counts():
+    country_count = get_country_counts()
+
+    return country_count.to_dict(orient="records")

@@ -13,6 +13,7 @@ Usage
 
     df = get_book(22077083)
 """
+import streamlit as st
 import pandas as pd
 from google.cloud import bigquery
 
@@ -47,4 +48,30 @@ def get_book(book_id: int) -> pd.DataFrame:
     )
 
     df = client.query(query, job_config=job_config).to_dataframe()
+    return df
+
+from google.cloud import bigquery
+import pandas as pd
+
+@st.cache_data(ttl=3600)  # cache for 1 hour
+def get_country_counts() -> pd.DataFrame:
+    """
+    Retrieve country-level book counts from BigQuery.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing country counts data.
+    """
+
+    client = bigquery.Client()
+
+    full_table_name = "books_dataset.country_counts"
+
+    query = f"""
+        SELECT *
+        FROM `{full_table_name}`
+    """
+
+    df = client.query(query).to_dataframe()
     return df
