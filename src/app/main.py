@@ -39,7 +39,7 @@ import streamlit as st
 from book_detail import show_book_details
 
 API_URL = 'https://my-shelves-image-151819310613.europe-west1.run.app/read'
-# API_URL = 'http://127.0.0.1:8000/read'
+#API_URL = 'http://127.0.0.1:8000/read'
 
 query_params = st.query_params
 book_id = query_params.get("book_id")
@@ -53,7 +53,23 @@ if not book_id:
 if book_id:
     params = {"book_id": book_id}
 
-    response = requests.get(API_URL, params=params, timeout=10)
-    response_json = response.json()
+    try:
+        response = requests.get(API_URL, params=params, timeout=10)
 
-    show_book_details(response_json)
+        # 1. Vérifier le status HTTP
+        if response.status_code == 200:
+            # 2. Vérifier qu'il y a bien du contenu
+            if response.text.strip():
+                response_json = response.json()
+                show_book_details(response_json)
+            else:
+                st.warning("📚 Le livre n'a pas été retrouvé.")
+        elif response.status_code == 404:
+            st.warning("📚 Le livre n'a pas été retrouvé.")
+        else:
+            st.error(f"⚠️ Erreur API (code {response.status_code})")
+
+    except requests.exceptions.JSONDecodeError:
+        st.warning("📚 Le livre n'a pas été retrouvé.")
+    except requests.exceptions.RequestException as e:
+        st.error(f"🚨 Erreur de connexion à l'API : {e}")

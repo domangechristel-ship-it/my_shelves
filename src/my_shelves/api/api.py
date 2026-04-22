@@ -14,7 +14,7 @@ Or via Docker:
     docker run -e PORT=8000 -p 8080:8000 api:dev
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from my_shelves.utils.bigquery import get_book
 
 app = FastAPI()
@@ -27,7 +27,7 @@ def index():
 @app.get('/read')
 def read_book(book_id: int = 22077083):
     """
-    Retrieve a book's description from BigQuery.
+    Retrieve a book's information from BigQuery.
 
     Parameters
     ----------
@@ -37,18 +37,28 @@ def read_book(book_id: int = 22077083):
     Returns
     -------
     dict
-        book_id : str
-        description : str
+        Dictionary containing the book information.
+
+    Raises
+    ------
+    HTTPException
+        If no book is found for the given book_id.
     """
     book = get_book(book_id)
 
-    return {'book_id': str(book['book_id'].item()),
-            'description': str(book['description'].item()),
-            'publication_year': str(book['publication_year'].item()),
-            'image_url': str(book['image_url'].item()),
-            'url': str(book['url'].item()),
-            'average_rating': str(book['average_rating'].item()),
-            'title': str(book['title'].item()),
-            'num_pages': str(book['num_pages'].item()),
-            'series': str(book['series'].item())
-            }
+    if book.empty:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    row = book.iloc[0]
+
+    return {
+        'book_id': str(row['book_id']),
+        'description': str(row['description']),
+        'publication_year': str(row['publication_year']),
+        'image_url': str(row['image_url']),
+        'url': str(row['url']),
+        'average_rating': str(row['average_rating']),
+        'title': str(row['title']),
+        'num_pages': str(row['num_pages']),
+        'series': str(row['series'])
+    }

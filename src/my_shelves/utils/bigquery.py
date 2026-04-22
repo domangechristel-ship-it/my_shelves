@@ -16,11 +16,9 @@ Usage
 import pandas as pd
 from google.cloud import bigquery
 
-def get_book(
-        book_id: int
-    ) -> pd.DataFrame:
+def get_book(book_id: int) -> pd.DataFrame:
     """
-    Retrieve a book information from BigQuery based on its book_id.
+    Retrieve book information from BigQuery based on its book_id.
 
     Parameters
     ----------
@@ -31,10 +29,11 @@ def get_book(
     -------
     pd.DataFrame
         DataFrame containing the matching book row(s).
+        Returns an empty DataFrame if no book is found.
     """
-
     client = bigquery.Client()
-    full_table_name = 'books_dataset.books'
+    full_table_name = "books_dataset.books"
+
     query = f"""
         SELECT *
         FROM {full_table_name}
@@ -48,5 +47,4 @@ def get_book(
     )
 
     df = client.query(query, job_config=job_config).to_dataframe()
-
     return df
