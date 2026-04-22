@@ -36,7 +36,7 @@ and formatting should be handled in dedicated utility modules when possible.
 import requests
 
 import streamlit as st
-from book_detail import show_book_details
+from show_pages import show_book_details
 
 API_URL = 'https://my-shelves-image-151819310613.europe-west1.run.app/read'
 #API_URL = 'http://127.0.0.1:8000/read'
