@@ -36,7 +36,7 @@ and formatting should be handled in dedicated utility modules when possible.
 import requests
 
 import streamlit as st
-from show_pages import show_book_details
+from show_pages import show_book_details, show_books_table
 
 API_URL = 'https://my-shelves-image-151819310613.europe-west1.run.app/read'
 #API_URL = 'http://127.0.0.1:8000/read'
@@ -73,3 +73,13 @@ if book_id:
         st.warning("📚 Le livre n'a pas été retrouvé.")
     except requests.exceptions.RequestException as e:
         st.error(f"🚨 Erreur de connexion à l'API : {e}")
+
+# --------------------
+#     show book table
+# --------------------
+API_URL_books = 'http://127.0.0.1:8000/books?book_id_list=89376&book_id_list=22077083&book_id_list=220077084'
+
+response = requests.get(API_URL_books, timeout=10)
+response_json = response.json()
+
+show_books_table(response_json)

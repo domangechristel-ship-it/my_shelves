@@ -50,9 +50,6 @@ def get_book(book_id: int) -> pd.DataFrame:
     df = client.query(query, job_config=job_config).to_dataframe()
     return df
 
-from google.cloud import bigquery
-import pandas as pd
-
 @st.cache_data(ttl=3600)  # cache for 1 hour
 def get_country_counts() -> pd.DataFrame:
     """
@@ -74,4 +71,44 @@ def get_country_counts() -> pd.DataFrame:
     """
 
     df = client.query(query).to_dataframe()
+    return df
+
+
+def get_books(book_id_list: list[int], nbr_rows: int = 10) -> pd.DataFrame:
+    """
+    Retrieve books from BigQuery based on a list of book_ids.
+
+    Parameters
+    ----------
+    book_id_list : list[int]
+        List of book IDs to retrieve.
+    nbr_rows : int, optional
+        Maximum number of rows to return. If None, returns all matching rows.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the matching books.
+    """
+
+    client = bigquery.Client()
+    full_table_name = "books_dataset.books"
+
+    query = f"""
+        SELECT *
+        FROM `{full_table_name}`
+        WHERE book_id IN UNNEST(@book_id_list)
+    """
+
+    if nbr_rows is not None:
+        query += f"\nLIMIT {nbr_rows}"
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ArrayQueryParameter("book_id_list", "INT64", book_id_list)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
     return df

@@ -138,8 +138,9 @@ if st.session_state.page == "Map":
         st.session_state.page = "Books"
 
         # 👉 ajouter dans l'URL
-        st.query_params["country"] = country_clicked
         st.query_params["page"] = "Books"
+        st.query_params["country"] = country_clicked
+
 
         st.success(f"Country selected: {country_clicked}")
         st.rerun()

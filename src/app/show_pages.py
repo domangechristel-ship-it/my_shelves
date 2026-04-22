@@ -26,6 +26,8 @@ Examples of pages
 ----------------
 - show_book_details(book_data) :
     Display detailed information about a selected book
+- show_books_table(book_list,nbr_rows):
+    Display a table of books
 
 Dependencies
 ------------
@@ -41,6 +43,7 @@ Notes
   processing to dedicated service or utility modules when possible.
 """
 import streamlit as st
+import pandas as pd
 
 def show_book_details(response_json: dict) -> None:
     """
@@ -189,3 +192,52 @@ def show_book_details(response_json: dict) -> None:
     st.markdown(f'<div class="description-box">{description}</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
+
+def show_books_table(response_json: dict | list[dict]) -> None:
+    """
+    Display a books table with clickable cover images.
+
+    When clicking the image, it updates the URL with ?book_id=...
+    """
+
+    if not response_json:
+        st.info("No books to display.")
+        return
+
+    # Ensure list
+    data = [response_json] if isinstance(response_json, dict) else response_json
+    df = pd.DataFrame(data)
+
+    # Keep only needed columns
+    df = df[["image_url", "book_id", "title", "average_rating"]]
+
+    # Header
+    col1, col2, col3, col4 = st.columns([1, 1, 4, 1])
+    col1.markdown("**Cover**")
+    col2.markdown("**Book ID**")
+    col3.markdown("**Title**")
+    col4.markdown("**Rating**")
+
+    st.markdown("---")
+
+    # Rows
+    for _, row in df.iterrows():
+        col1, col2, col3, col4 = st.columns([1, 1, 4, 1])
+
+        book_id = row["book_id"]
+
+        # 🔗 clickable image → updates URL
+        link = f"?book_id={book_id}"
+
+        col1.markdown(
+            f"""
+            <a href="{link}">
+                <img src="{row['image_url']}" style="height:100px;border-radius:5px;">
+            </a>
+            """,
+            unsafe_allow_html=True
+        )
+
+        col2.write(book_id)
+        col3.write(row["title"])
+        col4.write(row["average_rating"])

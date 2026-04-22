@@ -14,8 +14,9 @@ Or via Docker:
     docker run -e PORT=8000 -p 8080:8000 api:dev
 """
 
-from fastapi import FastAPI, HTTPException
-from my_shelves.utils.bigquery import get_book,get_country_counts
+import pandas as pd
+from fastapi import FastAPI, HTTPException, Query
+from my_shelves.utils.bigquery import get_book, get_country_counts, get_books
 
 app = FastAPI()
 
@@ -68,3 +69,37 @@ def read_country_counts():
     country_count = get_country_counts()
 
     return country_count.to_dict(orient="records")
+
+@app.get("/books")
+def read_books(
+    book_id_list: list[int] = Query(...),
+    nbr_rows: int | None = Query(10)
+):
+    """
+    Retrieve books from BigQuery based on a list of book IDs.
+
+    Parameters
+    ----------
+    book_id_list : list[int]
+        list of book IDs to retrieve.
+    nbr_rows : int | None, optional
+        Maximum number of rows to return. If None, all matching rows are returned.
+
+    Returns
+    -------
+    list[dict]
+        List of books as dictionaries.
+    """
+    df = get_books(book_id_list=book_id_list, nbr_rows=nbr_rows)
+
+    if df.empty:
+        raise HTTPException(
+            status_code=404,
+            detail="No books found for the provided book_id_list."
+        )
+
+    # Remplacer les NaN par None pour avoir un JSON valide
+    df = df.where(df.notna(), None)
+    df = df.astype(object).where(pd.notnull(df), None)
+
+    return df.to_dict(orient="records")
