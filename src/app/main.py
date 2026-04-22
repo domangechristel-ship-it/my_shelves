@@ -77,9 +77,27 @@ if book_id:
 # --------------------
 #     show book table
 # --------------------
-API_URL_books = 'http://127.0.0.1:8000/books?book_id_list=89376&book_id_list=22077083&book_id_list=220077084'
+# API_URL_books = 'https://my-shelves-image-151819310613.europe-west1.run.app/books'
+API_URL_books = 'http://127.0.0.1:8000/books'
 
-response = requests.get(API_URL_books, timeout=10)
-response_json = response.json()
+query_params = st.query_params
+book_id_list = query_params.get_all("book_id_list")
 
-show_books_table(response_json)
+if book_id_list:
+    # Convert to int (optional but safer)
+    book_id_list = [int(b) for b in book_id_list]
+
+    # Build params dict for requests
+    params = {
+        "book_id_list": book_id_list
+    }
+
+    response = requests.get(API_URL_books, params=params, timeout=10)
+
+    if response.status_code == 200:
+        response_json = response.json()
+        show_books_table(response_json)
+    else:
+        st.error(f"API error: {response.status_code}")
+else:
+    st.info("No books selected.")
