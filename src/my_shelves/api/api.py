@@ -43,5 +43,12 @@ def read_book(book_id: int = 22077083):
     book = get_book(book_id)
 
     return {'book_id': str(book['book_id'].item()),
-            'description': book['description'].item()
+            'description': str(book['description'].item()),
+            'publication_year': str(book['publication_year'].item()),
+            'image_url': str(book['image_url'].item()),
+            'url': str(book['url'].item()),
+            'average_rating': str(book['average_rating'].item()),
+            'title': str(book['title'].item()),
+            'num_pages': str(book['num_pages'].item()),
+            'series': str(book['series'].item())
             }
