@@ -3,3 +3,4 @@ requirements_local.txt
 __pycache__
 *.egg-info
 .envrc
+data

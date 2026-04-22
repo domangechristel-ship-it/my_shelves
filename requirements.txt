@@ -6,3 +6,7 @@ db-dtypes
 fastapi
 uvicorn
 streamlit
+# Fake datasets
+Faker
+pycountry
+countryinfo

@@ -10,7 +10,7 @@ requirements = [x.strip() for x in content if "git+" not in x]
 
 
 setup(name='my_shelves',
-      version="0.0.01",
+      version="0.0.1",
       description="MyShelves Books recommandations.",
       license="MIT",
       author="Le Wagon",
