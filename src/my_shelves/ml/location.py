@@ -128,7 +128,7 @@ class Location:
         """Resolve a location string into country info."""
 
         if location is None or str(location).strip() == "":
-            return self._empty_result("empty")
+            return self.empty_result("empty")
 
         location = str(location).strip()
 
@@ -150,7 +150,7 @@ class Location:
                 "capital_latlng": info.capital_latlng(),
                 "resolved_as": "direct_country"
             }
-        except Exception:
+        except ValueError:
             return None
 
     def _safe_geocode_country(self, location: str):
@@ -159,19 +159,19 @@ class Location:
             geo = self.geocode(location, addressdetails=True, language="en")
 
             if geo is None:
-                return self._empty_result("not_found")
+                return self.empty_result("not_found")
 
             address = geo.raw.get("address", {})
             country = address.get("country")
 
             if not country:
-                return self._empty_result("country_not_found")
+                return self.empty_result("country_not_found")
 
             try:
                 info = CountryInfo(country)
                 region = info.region()
                 capital_latlng = info.capital_latlng()
-            except Exception:
+            except ValueError:
                 region = None
                 capital_latlng = None
 
@@ -182,10 +182,10 @@ class Location:
                 "resolved_as": "geocoded"
             }
 
-        except Exception:
-            return self._empty_result("error")
+        except ValueError:
+            return self.empty_result("error")
 
-    def _empty_result(self, reason: str):
+    def empty_result(self, reason: str):
         """Standard empty response."""
         return {
             "country": None,
