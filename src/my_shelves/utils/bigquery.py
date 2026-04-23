@@ -11,7 +11,7 @@ Usage
 -----
     from bigquery import get_book
 
-    df = get_book(22077083)
+    df = get_book(6668764)
 """
 import streamlit as st
 import pandas as pd
@@ -33,7 +33,7 @@ def get_book(book_id: int) -> pd.DataFrame:
         Returns an empty DataFrame if no book is found.
     """
     client = bigquery.Client()
-    full_table_name = "books_dataset.books"
+    full_table_name = "books_dataset.base_reviews_ENG_1M"
 
     query = f"""
         SELECT *
@@ -92,7 +92,7 @@ def get_books(book_id_list: list[int], nbr_rows: int = 10) -> pd.DataFrame:
     """
 
     client = bigquery.Client()
-    full_table_name = "books_dataset.books"
+    full_table_name = "books_dataset.base_reviews_ENG_1M"
 
     query = f"""
         SELECT *
@@ -112,3 +112,37 @@ def get_books(book_id_list: list[int], nbr_rows: int = 10) -> pd.DataFrame:
     df = client.query(query, job_config=job_config).to_dataframe()
 
     return df
+
+def get_id_by_country(country: str) -> list[int]:
+    """
+    Retrieve book IDs for a given country from BigQuery.
+
+    Parameters
+    ----------
+    country : str
+        Name of the country (case-insensitive).
+
+    Returns
+    -------
+    list[int]
+        List of book_id values corresponding to the given country.
+    """
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT DISTINCT book_id
+        FROM `books_dataset.book_locations`
+        WHERE LOWER(country) = LOWER(@country)
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("country", "STRING", country)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    # Return as a clean Python list
+    return df["book_id"].dropna().astype(int).tolist()
