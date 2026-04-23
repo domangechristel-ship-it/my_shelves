@@ -10,3 +10,4 @@ geopy
 countryinfo
 folium
 streamlit-folium
+transformers
