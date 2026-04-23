@@ -28,6 +28,8 @@ Examples of pages
     Display detailed information about a selected book
 - show_books_table(book_list,nbr_rows):
     Display a table of books
+- show_map():
+    Display a map
 
 Dependencies
 ------------
@@ -42,156 +44,26 @@ Notes
 - Keep each page function focused on UI rendering and delegate heavy
   processing to dedicated service or utility modules when possible.
 """
+import ast
 import streamlit as st
 import pandas as pd
-
-def show_book_details(response_json: dict) -> None:
-    """
-    Display a book detail page from a JSON response.
-
-    Parameters
-    ----------
-    response_json : dict
-        Dictionary containing book information.
-
-    Features
-    --------
-    - Retrieve a book by its `book_id` via:
-        • URL query parameter (e.g., ?book_id=22077083)
-        • Manual input through a text field
-    - Display detailed book information (title, description, cover, metadata)
-    - Seamless integration with an external API endpoint
-    - Dynamic UI behavior depending on user input or URL state
-
-    """
-
-    # Récupération sécurisée des champs
-    title = response_json.get("title", "Unknown title")
-    book_id = response_json.get("book_id", "")
-    description = response_json.get("description", "No description available.")
-    publication_year = response_json.get("publication_year", "")
-    image_url = response_json.get("image_url", "")
-    goodreads_url = response_json.get("url", "")
-    average_rating = response_json.get("average_rating", "")
-    num_pages = response_json.get("num_pages", "")
-    series = response_json.get("series", "")
-
-    # Petit nettoyage des valeurs
-    if publication_year:
-        publication_year = str(publication_year).replace(".0", "")
-    if num_pages:
-        num_pages = str(num_pages).replace(".0", "")
-
-    st.markdown(
-        """
-        <style>
-        .book-card {
-            background-color: #ffffff;
-            padding: 2rem;
-            border-radius: 18px;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
-            margin-bottom: 1.5rem;
-        }
-        .book-title {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.3rem;
-            color: #1f1f1f;
-        }
-        .book-subtitle {
-            font-size: 0.95rem;
-            color: #6c757d;
-            margin-bottom: 1rem;
-        }
-        .metric-box {
-            background-color: #f8f9fa;
-            padding: 0.8rem 1rem;
-            border-radius: 12px;
-            text-align: center;
-            border: 1px solid #e9ecef;
-        }
-        .metric-label {
-            font-size: 0.85rem;
-            color: #6c757d;
-        }
-        .metric-value {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #212529;
-        }
-        .description-box {
-            background-color: #fcfcfc;
-            padding: 1rem;
-            border-radius: 12px;
-            border: 1px solid #eeeeee;
-            line-height: 1.6;
-            color: #333333;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+import folium
+from streamlit_folium import st_folium
+import requests
+from helpers import (
+    get_book_id_from_query_or_input,
+    fetch_book_details,
+    normalize_book_data,
+    render_book_details,
+)
 
 
-    st.title("📚 Book Details")
-
-    col1, col2 = st.columns([1, 2])
-
-    with col1:
-        if image_url:
-            st.image(image_url, use_container_width=True)
-        else:
-            st.write("No cover available")
-
-    with col2:
-        st.markdown(f'<div class="book-title">{title}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="book-subtitle">Book ID: {book_id}</div>', unsafe_allow_html=True)
-
-        m1, m2, m3 = st.columns(3)
-
-        with m1:
-            st.markdown(
-                f"""
-                <div class="metric-box">
-                    <div class="metric-label">⭐ Rating</div>
-                    <div class="metric-value">{average_rating}</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-        with m2:
-            st.markdown(
-                f"""
-                <div class="metric-box">
-                    <div class="metric-label">📄 Pages</div>
-                    <div class="metric-value">{num_pages}</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-        with m3:
-            st.markdown(
-                f"""
-                <div class="metric-box">
-                    <div class="metric-label">📅 Year</div>
-                    <div class="metric-value">{publication_year}</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-        if series:
-            st.markdown(f"**Series**: {series}")
-
-        if goodreads_url:
-            st.link_button("🔗 Open on Goodreads", goodreads_url)
-
-    st.markdown("### Description")
-    st.markdown(f'<div class="description-box">{description}</div>', unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
+HOST = '127.0.0.1:8000'
+# HOST = 'my-shelves-image-151819310613.europe-west1.run.app'
+API_URL_COUNTRY = f'http://{HOST}/country'
+API_URL_BOOK_IDS_BY_COUNTRY = f"http://{HOST}/books/by-country"
+API_URL_BOOKS = f"http://{HOST}/books"
+API_URL_BOOK = f"http://{HOST}/read"
 
 def show_books_table(response_json: dict | list[dict]) -> None:
     """
@@ -241,3 +113,191 @@ def show_books_table(response_json: dict | list[dict]) -> None:
         col2.write(book_id)
         col3.write(row["title"])
         col4.write(row["average_rating"])
+
+def show_map() -> None:
+    """
+    Display an interactive world map with book counts per country.
+
+    Features
+    --------
+    - Color-coded markers based on number of books (binned)
+    - Click on a country to:
+        • store it in session_state
+        • navigate to "Books" page
+        • update URL query params
+    """
+    # --------------------------------------------------
+    # Data
+    # --------------------------------------------------
+    response = requests.get(API_URL_COUNTRY, timeout=10)
+
+    books_count_country = pd.DataFrame(response.json())
+    books_count_country["latlng"] = books_count_country["capital_latlng"].apply(ast.literal_eval)
+    books_count_country = books_count_country[["country", "latlng", "count_books"]].copy()
+    books_count_country = books_count_country[
+        books_count_country["latlng"].notna() &
+        (books_count_country["latlng"].apply(len) == 2)
+    ]
+    st.subheader("World map")
+
+    # -----------------------------
+    # Binning
+    # -----------------------------
+    bins = [0, 5, 10, 50, 100, 500, 1000, 100000]
+    labels = ["1-5", "6-10", "11-50", "51-100", "101-500", "501-1000", "1001+"]
+
+    df = books_count_country.copy()
+
+    df["count_bin"] = pd.cut(
+        df["count_books"],
+        bins=bins,
+        labels=labels,
+        include_lowest=True
+    )
+
+    # -----------------------------
+    # Colors (cool-warm)
+    # -----------------------------
+    bin_colors = {
+        "1-5": "#2c7bb6",
+        "6-10": "#66c2a5",
+        "11-50": "#abdda4",
+        "51-100": "#ffffbf",
+        "101-500": "#fdae61",
+        "501-1000": "#f46d43",
+        "1001+": "#d73027"
+    }
+
+    # -----------------------------
+    # Map
+    # -----------------------------
+    m = folium.Map(location=[20, 0], zoom_start=2, tiles="CartoDB positron")
+
+    for _, row in df.iterrows():
+        color = bin_colors.get(str(row["count_bin"]), "#cccccc")
+
+        folium.CircleMarker(
+            location=row["latlng"],
+            radius=8,
+            color=color,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.7,
+            popup=f"{row['country']}: {row['count_books']} books"
+        ).add_to(m)
+
+    map_data = st_folium(
+        m,
+        width=1200,
+        height=500,
+        returned_objects=["last_object_clicked_popup"]
+    )
+
+    # -----------------------------
+    # Handle click
+    # -----------------------------
+    clicked_popup = map_data.get("last_object_clicked_popup")
+
+    if clicked_popup:
+        country_clicked = clicked_popup.split(":")[0].strip()
+
+        st.session_state.selected_country = country_clicked
+        st.session_state.country_page = "Books"
+
+        # update URL
+        st.query_params["country_page"] = "Books"
+        st.query_params["country"] = country_clicked
+
+        st.success(f"Country selected: {country_clicked}")
+        st.rerun()
+
+    # -----------------------------
+    # Info
+    # -----------------------------
+    if st.session_state.get("selected_country"):
+        st.info(f"Current selected country: {st.session_state.selected_country}")
+
+def show_books_by_country() -> None:
+    """
+    Display the books list page for the currently selected country.
+
+    Behavior
+    --------
+    - Reads the selected country from `st.session_state.selected_country`
+    - Fetches the corresponding book IDs
+    - Fetches the full book details
+    - Displays the result with `show_books_table`
+    - Provides a button to go back to the map
+    """
+
+    st.subheader("📚 Books list")
+
+    selected_country = st.session_state.get("selected_country")
+
+    if selected_country is None:
+        st.warning("No country selected yet. Go to the map and click on a marker.")
+        return
+
+    st.write(f"Books for **{selected_country}**:")
+
+    try:
+        response_ids = requests.get(
+            API_URL_BOOK_IDS_BY_COUNTRY,
+            params={"country": selected_country},
+            timeout=10
+        )
+
+        if response_ids.status_code == 404:
+            st.warning(f"No books found for {selected_country}.")
+            return
+
+        if response_ids.status_code != 200:
+            st.error("Error while retrieving book IDs.")
+            return
+
+        book_ids = response_ids.json()
+
+        if not book_ids:
+            st.warning(f"No books found for {selected_country}.")
+            return
+
+        params = [("book_id_list", book_id) for book_id in book_ids]
+
+        response_books = requests.get(
+            API_URL_BOOKS,
+            params=params,
+            timeout=20
+        )
+
+        if response_books.status_code == 404:
+            st.warning(f"No books details found for {selected_country}.")
+            return
+
+        if response_books.status_code != 200:
+            st.error("Error while retrieving books details.")
+            return
+
+        response_books_json = response_books.json()
+        show_books_table(response_books_json)
+
+    except requests.RequestException as exc:
+        st.error(f"Request error: {exc}")
+
+    if st.button("⬅ Back to map"):
+        st.session_state.page = "Map"
+        st.query_params["page"] = "Map"
+        st.query_params.pop("country", None)
+        st.rerun()
+
+def show_book_details() -> None:
+    """Get a book id, fetch data from the API, and display the result."""
+    book_id = get_book_id_from_query_or_input()
+    if not book_id:
+        return
+
+    response_json = fetch_book_details(book_id)
+    if response_json is None:
+        return
+
+    book = normalize_book_data(response_json)
+    render_book_details(book)

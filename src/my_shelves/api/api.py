@@ -16,7 +16,7 @@ Or via Docker:
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
-from my_shelves.utils.bigquery import get_book, get_country_counts, get_books
+from my_shelves.utils.bigquery import get_book, get_country_counts, get_books,get_id_by_country
 
 app = FastAPI()
 
@@ -26,14 +26,14 @@ def index():
     return {'ok': True}
 
 @app.get('/read')
-def read_book(book_id: int = 22077083):
+def read_book(book_id: int = 6668764):
     """
     Retrieve a book's information from BigQuery.
 
     Parameters
     ----------
     book_id : int, optional
-        The unique identifier of the book (default: 22077083).
+        The unique identifier of the book (default: 6668764).
 
     Returns
     -------
@@ -127,3 +127,23 @@ def read_books(
     df = df.astype(object).where(pd.notnull(df), None)
 
     return df.to_dict(orient="records")
+
+@app.get("/books/by-country")
+def read_book_ids_by_country(country: str):
+    """
+    Retrieve the list of book IDs associated with a given country.
+
+    Parameters
+    ----------
+    country : str
+        Name of the country for which to fetch book IDs.
+
+    Returns
+    -------
+    list[int]
+        List of book IDs corresponding to the specified country.
+        Returns an empty list if no books are found.
+
+    """
+    book_ids = get_id_by_country(country)
+    return book_ids
