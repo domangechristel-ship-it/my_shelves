@@ -6,3 +6,5 @@ db-dtypes
 fastapi
 uvicorn
 streamlit
+geopy
+countryinfo
