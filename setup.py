@@ -10,7 +10,7 @@ requirements = [x.strip() for x in content if "git+" not in x]
 
 
 setup(name='my_shelves',
-      version="0.0.01",
+      version="0.0.2",
       description="MyShelves Books recommandations.",
       license="MIT",
       author="Le Wagon",
@@ -22,4 +22,9 @@ setup(name='my_shelves',
       test_suite="tests",
       # include_package_data: to install data from MANIFEST.in
       include_package_data=True,
-      zip_safe=False)
+      zip_safe=False,
+      entry_points={
+          'console_scripts': [
+              'process-data=my_shelves.prepare.process:main',
+          ],
+      })

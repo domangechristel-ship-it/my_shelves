@@ -39,4 +39,12 @@ deploy: build_for_production push_image_production deploy_to_cloud_run
 
 
 deploy_web_app:
-	gcloud run deploy --region ${GCP_REGION} --source src/app my-shelves
+	@VERSION=`python setup.py --version | tr -d '\n' | sed 's/\./-/g'`-`date +%Y%m%d%H%M%S`; \
+	gcloud run deploy my-shelves --region ${GCP_REGION} --source src/app --revision-suffix $$VERSION
+
+
+get_kaggle_dataset:
+	# if not ls data/goodreads-book-reviews1.zip
+	# Download it
+	@curl -L -o data/goodreads-book-reviews1.zip  https://www.kaggle.com/api/v1/datasets/download/pypiahmad/goodreads-book-reviews1 \
+	&& cd data && unzip goodreads-book-reviews1.zip
