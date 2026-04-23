@@ -13,6 +13,7 @@ Usage
 
     df = get_book(22077083)
 """
+import streamlit as st
 import pandas as pd
 from google.cloud import bigquery
 

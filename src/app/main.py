@@ -36,7 +36,7 @@ and formatting should be handled in dedicated utility modules when possible.
 import requests
 
 import streamlit as st
-from book_detail import show_book_details
+from show_pages import show_book_details, show_books_table
 
 API_URL = 'https://my-shelves-image-151819310613.europe-west1.run.app/read'
 #API_URL = 'http://127.0.0.1:8000/read'
@@ -73,3 +73,31 @@ if book_id:
         st.warning("📚 Le livre n'a pas été retrouvé.")
     except requests.exceptions.RequestException as e:
         st.error(f"🚨 Erreur de connexion à l'API : {e}")
+
+# --------------------
+#     show book table
+# --------------------
+# API_URL_books = 'https://my-shelves-image-151819310613.europe-west1.run.app/books'
+API_URL_books = 'http://127.0.0.1:8000/books'
+
+query_params = st.query_params
+book_id_list = query_params.get_all("book_id_list")
+
+if book_id_list:
+    # Convert to int (optional but safer)
+    book_id_list = [int(b) for b in book_id_list]
+
+    # Build params dict for requests
+    params = {
+        "book_id_list": book_id_list
+    }
+
+    response = requests.get(API_URL_books, params=params, timeout=10)
+
+    if response.status_code == 200:
+        response_json = response.json()
+        show_books_table(response_json)
+    else:
+        st.error(f"API error: {response.status_code}")
+else:
+    st.info("No books selected.")
