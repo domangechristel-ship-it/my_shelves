@@ -58,13 +58,6 @@ from helpers import (
 )
 from params import API_URL_BOOKS, API_URL_COUNTRY, API_URL_BOOK_IDS_BY_COUNTRY
 
-# # HOST = '127.0.0.1:8000'
-# HOST = 'my-shelves-image-151819310613.europe-west1.run.app'
-# API_URL_COUNTRY = f'http://{HOST}/country'
-# API_URL_BOOK_IDS_BY_COUNTRY = f"http://{HOST}/books/by-country"
-# API_URL_BOOKS = f"http://{HOST}/books"
-# API_URL_BOOK = f"http://{HOST}/read"
-
 def show_books_table(response_json: dict | list[dict]) -> None:
     """
     Display a books table with clickable cover images.
