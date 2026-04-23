@@ -8,3 +8,5 @@ uvicorn
 streamlit
 geopy
 countryinfo
+folium
+streamlit-folium
