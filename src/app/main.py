@@ -64,18 +64,15 @@ with tab_find_book:
 # TAB 2 - COUNTRY
 # ==================================================
 with tab_country:
-    st.subheader("🌍 Country")
 
     # ----------------------------------------------
     # Page 1 : Map
     # ----------------------------------------------
     if st.session_state.country_page == "Map":
-        st.markdown("### 🌍 Map page")
         show_map()
 
     # # ----------------------------------------------
     # # Page 2 : Books
     # # ----------------------------------------------
     elif st.session_state.country_page == "Books":
-        st.markdown("### 📖 Books list")
         show_books_by_country()

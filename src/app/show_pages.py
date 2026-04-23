@@ -57,9 +57,8 @@ from helpers import (
     render_book_details,
 )
 
-
-HOST = '127.0.0.1:8000'
-# HOST = 'my-shelves-image-151819310613.europe-west1.run.app'
+# HOST = '127.0.0.1:8000'
+HOST = 'my-shelves-image-151819310613.europe-west1.run.app'
 API_URL_COUNTRY = f'http://{HOST}/country'
 API_URL_BOOK_IDS_BY_COUNTRY = f"http://{HOST}/books/by-country"
 API_URL_BOOKS = f"http://{HOST}/books"
@@ -138,7 +137,6 @@ def show_map() -> None:
         books_count_country["latlng"].notna() &
         (books_count_country["latlng"].apply(len) == 2)
     ]
-    st.subheader("World map")
 
     # -----------------------------
     # Binning
@@ -220,14 +218,6 @@ def show_map() -> None:
 def show_books_by_country() -> None:
     """
     Display the books list page for the currently selected country.
-
-    Behavior
-    --------
-    - Reads the selected country from `st.session_state.selected_country`
-    - Fetches the corresponding book IDs
-    - Fetches the full book details
-    - Displays the result with `show_books_table`
-    - Provides a button to go back to the map
     """
 
     st.subheader("📚 Books list")
@@ -236,56 +226,50 @@ def show_books_by_country() -> None:
 
     if selected_country is None:
         st.warning("No country selected yet. Go to the map and click on a marker.")
-        return
 
-    st.write(f"Books for **{selected_country}**:")
+    else:
+        st.write(f"Books for **{selected_country}**:")
 
-    try:
-        response_ids = requests.get(
-            API_URL_BOOK_IDS_BY_COUNTRY,
-            params={"country": selected_country},
-            timeout=10
-        )
+        try:
+            response_ids = requests.get(
+                API_URL_BOOK_IDS_BY_COUNTRY,
+                params={"country": selected_country},
+                timeout=10
+            )
 
-        if response_ids.status_code == 404:
-            st.warning(f"No books found for {selected_country}.")
-            return
+            if response_ids.status_code == 404:
+                st.warning(f"No books found for {selected_country}.")
+            elif response_ids.status_code != 200:
+                st.error("Error while retrieving book IDs.")
+            else:
+                book_ids = response_ids.json()
 
-        if response_ids.status_code != 200:
-            st.error("Error while retrieving book IDs.")
-            return
+                if not book_ids:
+                    st.warning(f"No books found for {selected_country}.")
+                else:
+                    params = [("book_id_list", book_id) for book_id in book_ids]
 
-        book_ids = response_ids.json()
+                    response_books = requests.get(
+                        API_URL_BOOKS,
+                        params=params,
+                        timeout=20
+                    )
 
-        if not book_ids:
-            st.warning(f"No books found for {selected_country}.")
-            return
+                    if response_books.status_code == 404:
+                        st.warning(f"No books details found for {selected_country}.")
+                    elif response_books.status_code != 200:
+                        st.error("Error while retrieving books details.")
+                    else:
+                        response_books_json = response_books.json()
+                        show_books_table(response_books_json)
 
-        params = [("book_id_list", book_id) for book_id in book_ids]
-
-        response_books = requests.get(
-            API_URL_BOOKS,
-            params=params,
-            timeout=20
-        )
-
-        if response_books.status_code == 404:
-            st.warning(f"No books details found for {selected_country}.")
-            return
-
-        if response_books.status_code != 200:
-            st.error("Error while retrieving books details.")
-            return
-
-        response_books_json = response_books.json()
-        show_books_table(response_books_json)
-
-    except requests.RequestException as exc:
-        st.error(f"Request error: {exc}")
+        except requests.RequestException as exc:
+            st.error(f"Request error: {exc}")
 
     if st.button("⬅ Back to map"):
-        st.session_state.page = "Map"
-        st.query_params["page"] = "Map"
+        st.session_state.country_page = "Map"
+        st.session_state.selected_country = None
+        st.query_params["country_page"] = "Map"
         st.query_params.pop("country", None)
         st.rerun()
 
