@@ -77,8 +77,8 @@ if book_id:
 # --------------------
 #     show book table
 # --------------------
-# API_URL_books = 'https://my-shelves-image-151819310613.europe-west1.run.app/books'
-API_URL_books = 'http://127.0.0.1:8000/books'
+# API_URL_BOOKS = 'https://my-shelves-image-151819310613.europe-west1.run.app/books'
+API_URL_BOOKS = 'http://127.0.0.1:8000/books'
 
 query_params = st.query_params
 book_id_list = query_params.get_all("book_id_list")
@@ -92,7 +92,7 @@ if book_id_list:
         "book_id_list": book_id_list
     }
 
-    response = requests.get(API_URL_books, params=params, timeout=10)
+    response = requests.get(API_URL_BOOKS, params=params, timeout=10)
 
     if response.status_code == 200:
         response_json = response.json()

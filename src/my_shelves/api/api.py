@@ -66,6 +66,30 @@ def read_book(book_id: int = 22077083):
 
 @app.get('/country')
 def read_country_counts():
+    """
+    Retrieve aggregated book counts per country.
+
+    This endpoint queries the underlying data source (e.g., BigQuery)
+    to obtain the number of books associated with each country, along
+    with related geographic metadata.
+
+    Returns
+    -------
+    list[dict]
+        A list of dictionaries where each dictionary represents a country
+        and contains fields such as:
+        - country : str
+            The country name.
+        - capital_latlng : list[float] or str
+            Latitude and longitude of the country's capital.
+        - count_books : int
+            Number of books associated with the country.
+
+    Notes
+    -----
+    The data is returned in JSON format using pandas `to_dict(orient="records")`,
+    making it directly usable in frontend applications (e.g., Streamlit maps).
+    """
     country_count = get_country_counts()
 
     return country_count.to_dict(orient="records")

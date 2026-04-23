@@ -1,9 +1,14 @@
+'''
+streamlit country map and book list
+'''
+
+import ast
 import streamlit as st
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
 import requests
-import ast
+
 
 st.set_page_config(page_title="Books by Country", layout="wide")
 
