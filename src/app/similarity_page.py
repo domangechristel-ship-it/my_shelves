@@ -1,12 +1,15 @@
 
+"""Similarity page."""
+
+
 import requests
 import streamlit as st
 
 from params import API_URL_BOOKS, API_URL_BOOK_IDS_SIMILAR
 from show_pages import show_books_table
-from helpers import (
-    get_book_id_from_query_or_input,
-)
+# from helpers import (
+#     get_book_id_from_query_or_input,
+# )
 
 
 def show_similar_books() -> None:
