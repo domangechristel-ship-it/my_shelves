@@ -2,6 +2,8 @@ pandas
 ipykernel
 setuptools
 google-cloud-bigquery
+google-cloud-aiplatform
+google-cloud-storage
 db-dtypes
 fastapi
 uvicorn
@@ -11,3 +13,4 @@ countryinfo
 folium
 streamlit-folium
 transformers
+sentence-transformers
