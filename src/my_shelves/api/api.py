@@ -165,6 +165,7 @@ def get_similar_book(book_id: str) -> list[int]:
     list[dict]
         A list of IDs of similar books.
     """
+    print(book_id)
     return [1, 2, 3, 4]
     ## book_ids = get_similarity(int(book_id))
     ## return book_ids
