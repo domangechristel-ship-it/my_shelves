@@ -137,6 +137,18 @@ def compute_read_duration(df: pd.DataFrame,
     pd.DataFrame
         A DataFrame with the read duration column added.
     """
-    df["read_duration"] = (df[end_column] - df[start_column]).dt.total_seconds() / 3600
-    df["read_duration"] = df["read_duration"].apply(lambda x: max(x, 0))
+
+    def get_read_duration(row):
+        if row[start_column].year == 1970 or \
+            row[end_column].year == 1970 or \
+            row[start_column] > row[end_column]:
+            return np.nan
+        return round((row[end_column] - row[start_column]).total_seconds() / 3600, 2)
+    df["read_duration"] = df.apply(get_read_duration, axis=1)
+
+    # if df[start_column].dt.year == 1970 or df[end_column].dt.year == 2050:
+    #     df["read_duration"] = -1
+    # else:
+    #     df["read_duration"] = (df[end_column] - df[start_column]).dt.total_seconds() / 3600
+    #     df["read_duration"] = df["read_duration"].apply(lambda x: max(x, 0))
     return df

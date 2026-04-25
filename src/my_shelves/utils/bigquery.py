@@ -56,9 +56,10 @@ def upload_dataframe_to_bigquery(df: pd.DataFrame,
                                  project: str,
                                  dataset: str,
                                  table: str,
-                                 write_mode: str = "WRITE_TRUNCATE") -> str:
+                                 write_mode: str = "WRITE_TRUNCATE",
+                                 chunk_size: int | None = 100_000) -> str:
     """
-    Upload a DataFrame to a BigQuery table.
+    Upload a DataFrame to a BigQuery table, optionally in smaller chunks.
 
     Parameters
     ----------
@@ -73,20 +74,49 @@ def upload_dataframe_to_bigquery(df: pd.DataFrame,
     write_mode : str, optional
         The write disposition mode (default is "WRITE_TRUNCATE").
         Options include "WRITE_TRUNCATE", "WRITE_APPEND", and "WRITE_EMPTY".
+    chunk_size : int | None, optional
+        Number of rows per upload chunk. If None or larger than the DataFrame,
+        the entire DataFrame is uploaded in one job.
 
     Returns
     -------
     str
-        A message indicating the success of the upload operation.
+        A summary message for the upload operation.
     """
+    if df.empty:
+        message = f"No rows to upload to {project}.{dataset}.{table}."
+        print(message)
+        return message
+
     client = bigquery.Client(project=project)
     full_table_name = f"{project}.{dataset}.{table}"
+    write_mode = write_mode.upper()
 
-    job_config = bigquery.LoadJobConfig(write_disposition=write_mode)
-    job = client.load_table_from_dataframe(df, full_table_name, job_config=job_config)
-    result = job.result()  # Wait for the job to complete
-    print(f"Data uploaded to {full_table_name} with write mode {write_mode}.")
-    return result
+    def _load_chunk(chunk: pd.DataFrame, disposition: str, chunk_index: int, total_chunks: int) -> None:
+        print(
+            f"Uploading chunk {chunk_index}/{total_chunks} ({len(chunk)} rows) "
+            f"to {full_table_name} with write mode {disposition}."
+        )
+        job_config = bigquery.LoadJobConfig(write_disposition=disposition)
+        job = client.load_table_from_dataframe(chunk, full_table_name, job_config=job_config)
+        job.result()
+
+    if chunk_size is None or chunk_size <= 0 or len(df) <= chunk_size:
+        _load_chunk(df, write_mode, 1, 1)
+    else:
+        total_rows = len(df)
+        total_chunks = (total_rows + chunk_size - 1) // chunk_size
+        for chunk_index, start in enumerate(range(0, total_rows, chunk_size), start=1):
+            chunk = df.iloc[start:start + chunk_size]
+            if chunk_index == 1:
+                disposition = write_mode
+            else:
+                disposition = "WRITE_APPEND" if write_mode in {"WRITE_TRUNCATE", "WRITE_EMPTY"} else write_mode
+            _load_chunk(chunk, disposition, chunk_index, total_chunks)
+
+    message = f"Data uploaded to {full_table_name} in chunks with base write mode {write_mode}."
+    print(message)
+    return message
 
 
 @st.cache_data(ttl=3600)  # cache for 1 hour
