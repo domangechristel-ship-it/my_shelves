@@ -45,8 +45,7 @@ def drop_small_text(df: pd.DataFrame,
 
 
 def convert_column_to_datetime(df: pd.DataFrame,
-                               column_name: str,
-                               replacement_value: str="futur") -> pd.DataFrame:
+                               columns: list[str]) -> pd.DataFrame:
     """Convert a specified column in the DataFrame to datetime format, handling errors by replacing
     invalid entries with a default date based on the provided replacement value.
     Parameters
@@ -66,37 +65,10 @@ def convert_column_to_datetime(df: pd.DataFrame,
         invalid entries replaced with the appropriate default date.
     """
     replacement_date = 'Sun Jul 1 00:00:00 -0700 1970'
-    if replacement_value == "futur":
-        replacement_date = 'Sun Jul 1 00:00:00 -0700 2050'
-    df[column_name] = pd.to_datetime(df[column_name],
-                                     format='%a %b %d %H:%M:%S %z %Y',
-                                     utc=True,
-                                     errors='coerce')
-    df[column_name] = df[column_name].fillna(value=replacement_date)
-    return df
-
-
-def clean_dates(df: pd.DataFrame) -> pd.DataFrame:
-    """Clean the date columns in the reviews DataFrame by converting them to
-    datetime format and replacing invalid entries with appropriate default dates
-    based on whether they represent past or future events.
-    Parameters    ----------
-    df : pd.DataFrame
-        The DataFrame containing the reviews data with date columns to be cleaned.
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame with the date columns cleaned and converted to datetime
-        format, with invalid entries replaced by default dates corresponding to
-        past or future events as appropriate."""
-
-    date_columns = {"started_at": "past",
-                    "read_at": "futur",
-                    "date_added": "futur",
-                    "date_updated": "futur"}
-
-    for column, replacement_value in date_columns.items():
-        df = convert_column_to_datetime(df,
-                                        column_name=column,
-                                        replacement_value=replacement_value)
+    for column_name in columns:
+        df[column_name] = pd.to_datetime(df[column_name],
+                                         format='%a %b %d %H:%M:%S %z %Y',
+                                         utc=True,
+                                         errors='coerce')
+        df[column_name] = df[column_name].fillna(value=replacement_date)
     return df
