@@ -51,7 +51,7 @@ def get_book(book_id: int) -> pd.DataFrame:
     df = client.query(query, job_config=job_config).to_dataframe()
     return df
 
-
+# pylint: disable=R0913,R0914,R0917
 def upload_dataframe_to_bigquery(df: pd.DataFrame,
                                  project: str,
                                  dataset: str,
@@ -92,7 +92,10 @@ def upload_dataframe_to_bigquery(df: pd.DataFrame,
     full_table_name = f"{project}.{dataset}.{table}"
     write_mode = write_mode.upper()
 
-    def _load_chunk(chunk: pd.DataFrame, disposition: str, chunk_index: int, total_chunks: int) -> None:
+    def _load_chunk(chunk: pd.DataFrame,
+                    disposition: str,
+                    chunk_index: int,
+                    total_chunks: int) -> None:
         print(
             f"Uploading chunk {chunk_index}/{total_chunks} ({len(chunk)} rows) "
             f"to {full_table_name} with write mode {disposition}."
@@ -111,7 +114,8 @@ def upload_dataframe_to_bigquery(df: pd.DataFrame,
             if chunk_index == 1:
                 disposition = write_mode
             else:
-                disposition = "WRITE_APPEND" if write_mode in {"WRITE_TRUNCATE", "WRITE_EMPTY"} else write_mode
+                disposition = "WRITE_APPEND" if write_mode in \
+                    {"WRITE_TRUNCATE", "WRITE_EMPTY"} else write_mode
             _load_chunk(chunk, disposition, chunk_index, total_chunks)
 
     message = f"Data uploaded to {full_table_name} in chunks with base write mode {write_mode}."
