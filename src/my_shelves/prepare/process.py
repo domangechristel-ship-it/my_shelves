@@ -44,11 +44,11 @@ def remove_outliers_iqr(group):
     pd.DataFrame
         The group with outliers in 'read_duration' removed.
     """
-    Q1 = group['read_duration'].quantile(0.25)
-    Q3 = group['read_duration'].quantile(0.75)
-    IQR = Q3 - Q1
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
+    q1 = group['read_duration'].quantile(0.25)
+    q3 = group['read_duration'].quantile(0.75)
+    iqr = q3 - q1
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
     return group[(group['read_duration'] >= lower_bound) &
                  (group['read_duration'] <= upper_bound)]
 
@@ -107,12 +107,20 @@ def process_books_by_lang(chunksize: int = 100000, force: bool = False) -> str:
 
 
 def process_books_by_lang_df(force: bool = False):
+    """Process the original books dataset filtered by language.
+    Returns
+    -------
+    str
+        The path to the processed books CSV file for the specified language.
+    """
     json_file = "data/kaggle/goodreads_books.json"
     output_file = "data/raw/goodreads_books_ENG.csv"
-    df = pd.read_json(json_file, lines=True)
-    df = df[df["language_code"].str.startswith("en")]
-    df = df.sort_values(by="book_id").reset_index(drop=True)
-    df.to_csv(output_file, index=False)
+    if force or not os.path.exists(output_file):
+        print("Processing books by language...")
+        df = pd.read_json(json_file, lines=True)
+        df = df[df["language_code"].str.startswith("en")]
+        df = df.sort_values(by="book_id").reset_index(drop=True)
+        df.to_csv(output_file, index=False)
     return output_file
 
 
@@ -207,6 +215,7 @@ def process_reviews_by_lang(lang: str,
 
 
 def process_reviews_chunks():
+    """Split the reviews dataset to smaller chunks."""
     for nrows in ["10k", "100k", "1M"]:
         print(f"Processing {nrows} rows...")
         print("Reading raw reviews dataset...")
@@ -319,6 +328,8 @@ def clean_reviews(lang: str, nrows: str="all", force: bool=False) -> str:
 
 
 def process_cleaned_reviews_chunks(force: bool=False):
+    """Split the cleaned_review dataset to smaller chunks."""
+
     # for nrows in ["10k", "100k", "200k"]:
     for nrows in N_ROWS_NAMES:
         if nrows == "all":
@@ -326,7 +337,7 @@ def process_cleaned_reviews_chunks(force: bool=False):
         output_file = f"data/reviews_cleaned_ENG_{nrows}.csv"
         if os.path.exists(output_file) and not force:
             print(f"{output_file} already exists. Skipping processing.")
-            return output_file
+            continue
 
         print(f"Processing {nrows} rows...")
         print("Reading raw reviews dataset...")

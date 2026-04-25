@@ -72,29 +72,3 @@ def convert_column_to_datetime(df: pd.DataFrame,
                                          errors='coerce')
         df[column_name] = df[column_name].fillna(value=replacement_date)
     return df
-
-
-def clean_dates(df: pd.DataFrame) -> pd.DataFrame:
-    """Clean the date columns in the reviews DataFrame by converting them to
-    datetime format and replacing invalid entries with appropriate default dates
-    based on whether they represent past or future events.
-    Parameters    ----------
-    df : pd.DataFrame
-        The DataFrame containing the reviews data with date columns to be cleaned.
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame with the date columns cleaned and converted to datetime
-        format, with invalid entries replaced by default dates corresponding to
-        past or future events as appropriate."""
-
-    date_columns = {"started_at": "past",
-                    "read_at": "futur",
-                    "date_added": "futur",
-                    "date_updated": "futur"}
-
-    for column, replacement_value in date_columns.items():
-        df = convert_column_to_datetime(df,
-                                        column_name=column,
-                                        replacement_value=replacement_value)
-    return df
