@@ -58,13 +58,6 @@ from helpers import (
 )
 from params import API_URL_BOOKS, API_URL_COUNTRY, API_URL_BOOK_IDS_BY_COUNTRY
 
-# # HOST = '127.0.0.1:8000'
-# HOST = 'my-shelves-image-151819310613.europe-west1.run.app'
-# API_URL_COUNTRY = f'http://{HOST}/country'
-# API_URL_BOOK_IDS_BY_COUNTRY = f"http://{HOST}/books/by-country"
-# API_URL_BOOKS = f"http://{HOST}/books"
-# API_URL_BOOK = f"http://{HOST}/read"
-
 def show_books_table(response_json: dict | list[dict]) -> None:
     """
     Display a books table with clickable cover images.
@@ -182,7 +175,8 @@ def show_map() -> None:
             fill=True,
             fill_color=color,
             fill_opacity=0.7,
-            popup=f"{row['country']}: {row['count_books']} books"
+            popup=f"{row['country']}: {row['count_books']} books",
+            tooltip=f"{row['country']} ({row['count_books']} books)"
         ).add_to(m)
 
     map_data = st_folium(
@@ -222,6 +216,13 @@ def show_books_by_country() -> None:
     """
 
     st.subheader("📚 Books list")
+
+    if st.button("⬅ Back to map"):
+        st.session_state.country_page = "Map"
+        st.session_state.selected_country = None
+        st.query_params["country_page"] = "Map"
+        st.query_params.pop("country", None)
+        st.rerun()
 
     selected_country = st.session_state.get("selected_country")
 
@@ -266,13 +267,6 @@ def show_books_by_country() -> None:
 
         except requests.RequestException as exc:
             st.error(f"Request error: {exc}")
-
-    if st.button("⬅ Back to map"):
-        st.session_state.country_page = "Map"
-        st.session_state.selected_country = None
-        st.query_params["country_page"] = "Map"
-        st.query_params.pop("country", None)
-        st.rerun()
 
 def show_book_details() -> None:
     """Get a book id, fetch data from the API, and display the result."""
