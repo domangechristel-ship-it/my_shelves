@@ -17,7 +17,7 @@ Or via Docker:
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from my_shelves.utils.bigquery import get_book, get_country_counts, get_books,get_id_by_country
-# from my_shelves.ml.similarity.main import get_similarity
+from my_shelves.ml.similarity.main import get_similarity
 
 
 app = FastAPI()
@@ -151,7 +151,7 @@ def read_book_ids_by_country(country: str):
     return book_ids
 
 @app.get("/books/similar")
-def get_similar_book(book_id: str) -> list[int]:
+def get_similar_book(book_id: str, model_name: str = None) -> list[int]:
     """
     Retrieve a list of similar books based on a given book_id.
 
@@ -165,7 +165,6 @@ def get_similar_book(book_id: str) -> list[int]:
     list[dict]
         A list of IDs of similar books.
     """
-    print(book_id)
-    return [1, 2, 3, 4]
-    ## book_ids = get_similarity(int(book_id))
-    ## return book_ids
+
+    book_ids = get_similarity(int(book_id), model_name=model_name, n_rows="10k")
+    return book_ids

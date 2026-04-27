@@ -6,8 +6,10 @@ by language and number of rows.
 import ast
 import os
 import csv
-import argparse
 import pandas as pd
+
+from prefect import task, flow
+from prefect.artifacts import create_table_artifact
 
 # Package imports
 from my_shelves.prepare import clean
@@ -16,6 +18,8 @@ from my_shelves.utils import bigquery
 
 from my_shelves.utils.params import GCP_PROJECT
 
+
+PREFECT_FLOW_NAME="preprocess-data"
 
 N_WORDS_THRESHOLD = 50
 N_ROWS_MAP = {"10k": 10_000,
@@ -29,31 +33,8 @@ N_ROWS_MAP = {"10k": 10_000,
 
 N_ROWS_NAMES = N_ROWS_MAP.keys()
 
-
-def remove_outliers_iqr(group):
-    """
-    Remove outliers from a group using the Interquartile Range (IQR) method.
-
-    Parameters
-    ----------
-    group : pd.DataFrame
-        A group of rows from a grouped DataFrame.
-
-    Returns
-    -------
-    pd.DataFrame
-        The group with outliers in 'read_duration' removed.
-    """
-    q1 = group['read_duration'].quantile(0.25)
-    q3 = group['read_duration'].quantile(0.75)
-    iqr = q3 - q1
-    lower_bound = q1 - 1.5 * iqr
-    upper_bound = q3 + 1.5 * iqr
-    return group[(group['read_duration'] >= lower_bound) &
-                 (group['read_duration'] <= upper_bound)]
-
-
-def process_books_by_lang(chunksize: int = 100000, force: bool = False) -> str:
+@task
+def process_books_by_lang_all(chunksize: int = 100000, force: bool = False) -> str:
     """
     Process the raw books dataset by language and save the results in separate
     CSV files for each language (French, English, Dutch). The function reads the
@@ -105,31 +86,9 @@ def process_books_by_lang(chunksize: int = 100000, force: bool = False) -> str:
     return output_file
 
 
-
-def process_books_by_lang_df(force: bool = False):
-    """Process the original books dataset filtered by language.
-    Returns
-    -------
-    str
-        The path to the processed books CSV file for the specified language.
-    """
-    json_file = "data/kaggle/goodreads_books.json"
-    output_file = "data/raw/goodreads_books_ENG.csv"
-    if force or not os.path.exists(output_file):
-        print("Processing books by language...")
-        df = pd.read_json(json_file, lines=True)
-        df = df[df["language_code"].str.startswith("en")]
-        df = df.sort_values(by="book_id").reset_index(drop=True)
-        df.to_csv(output_file, index=False)
-    return output_file
-
-
-
 # pylint: disable-msg=too-many-locals
-def process_reviews_by_lang(lang: str,
-                            nrows: str="all",
-                            chunksize: int=100000,
-                            force: bool=False) -> str:
+@task
+def process_reviews_by_lang_all(chunksize: int=100000, force: bool=False) -> str:
     """
     Process the raw reviews dataset by language and number of rows and save
     the results in separate CSV files for each language and number of rows.
@@ -151,13 +110,16 @@ def process_reviews_by_lang(lang: str,
         The path to the processed reviews CSV file for the specified language
         and number of rows.
     """
+    n_rows = "all"
+    lang = "ENG"
+
     print("_" * 80)
-    print(f"Processing {lang} reviews with {nrows} rows...")
+    print(f"Processing {lang} reviews with {n_rows} rows...")
     print("_" * 80)
 
     json_file = "data/kaggle/goodreads_reviews_dedup.json"
     books_file = f'data/raw/goodreads_books_{lang}.csv'
-    output_file = f"data/raw/goodreads_reviews_{lang}_{nrows}.csv"
+    output_file = f"data/raw/goodreads_reviews_{lang}_{n_rows}.csv"
 
     if os.path.exists(output_file) and not force:
         print(f"{output_file} already exists. Skipping processing.")
@@ -165,7 +127,7 @@ def process_reviews_by_lang(lang: str,
 
     def get_books_ids(books_file):
         books = pd.read_csv(books_file,
-                            nrows=N_ROWS_MAP[nrows],
+                            nrows=N_ROWS_MAP[n_rows],
                             usecols=['book_id'])
         book_ids = books["book_id"].values
 
@@ -214,20 +176,20 @@ def process_reviews_by_lang(lang: str,
     return output_file
 
 
-def process_reviews_chunks():
+def process_reviews_chunk(n_rows: str="10k"):
     """Split the reviews dataset to smaller chunks."""
-    for nrows in ["10k", "100k", "1M"]:
-        print(f"Processing {nrows} rows...")
-        print("Reading raw reviews dataset...")
-        reviews = pd.read_csv("data/goodreads_reviews_ENG_all.csv",
-                                nrows=N_ROWS_MAP[nrows])
-        print("Sorting reviews by book_id...")
-        reviews.sort_values(by="book_id", inplace=True)
-        print("Saving reviews to CSV file...")
-        reviews.to_csv(f"data/goodreads_reviews_ENG_{nrows}.csv", index=False)
+    print(f"Processing {n_rows} rows...")
+    print("Reading raw reviews dataset...")
+    reviews = pd.read_csv("data/goodreads_reviews_ENG_all.csv",
+                            nrows=N_ROWS_MAP[n_rows])
+    print("Sorting reviews by book_id...")
+    reviews.sort_values(by="book_id", inplace=True)
+    print("Saving reviews to CSV file...")
+    reviews.to_csv(f"data/goodreads_reviews_ENG_{n_rows}.csv", index=False)
 
 
-def clean_reviews(lang: str, nrows: str="all", force: bool=False) -> str:
+@task
+def clean_reviews_all(force: bool=False) -> str:
     """
     Process the raw reviews dataset by language and number of rows and
     save the results in separate CSV files for each language and number of rows.
@@ -256,21 +218,23 @@ def clean_reviews(lang: str, nrows: str="all", force: bool=False) -> str:
         and number of rows.
     """
     # Get reviews raw dataset for the specified language and number of rows
+    lang = "ENG"
+    n_rows = "all"
+
     print("_" * 80)
-    print(f"Processing cleaned reviews for {lang} with {nrows} rows...")
+    print(f"Processing cleaned reviews for {lang} with {n_rows} rows...")
     print("_" * 80)
 
-    output_file = f"data/reviews_cleaned_{lang}_{nrows}.csv"
+    output_file = f"data/reviews_cleaned_{lang}_{n_rows}.csv"
 
     if os.path.exists(output_file) and not force:
         print(f"{output_file} already exists. Skipping processing.")
         return output_file
 
     # Read the reviews dataset for the specified language and number of rows
-    print(f"Reading reviews dataset for {lang} with {nrows} rows...")
-    # reviews_df = pd.read_csv(f"data/goodreads_reviews_{lang}_{nrows}.csv")
+    print(f"Reading reviews dataset for {lang} with {n_rows} rows...")
     reviews_df = pd.read_csv(f"data/raw/goodreads_reviews_{lang}_all.csv",
-                             nrows=N_ROWS_MAP[nrows])
+                             nrows=N_ROWS_MAP[n_rows])
     # Clean the reviews text by removing rows with missing or empty review text
     print("Cleaning reviews text...")
     reviews_df = clean.clean_text(reviews_df, column_name="review_text")
@@ -299,7 +263,7 @@ def clean_reviews(lang: str, nrows: str="all", force: bool=False) -> str:
     reviews_df = utils.compute_read_duration(reviews_df,
                                              start_column="started_at",
                                              end_column="read_at")
-    reviews_df.to_csv(f"data/reviews_cleaned_{lang}_{nrows}_debug.csv", index=False)
+    reviews_df.to_csv(f"data/reviews_cleaned_{lang}_{n_rows}_debug.csv", index=False)
     # Drop useless columns
     print("Dropping useless columns...")
     reviews_df = reviews_df.drop(columns=["started_at",
@@ -308,10 +272,6 @@ def clean_reviews(lang: str, nrows: str="all", force: bool=False) -> str:
                                           "date_added",
                                           "date_updated",
                                           "n_comments"])
-
-    # print("Removing outliers from read_duration using IQR method...")
-    # reviews_df = reviews_df.groupby("book_id", group_keys=False).apply(remove_outliers_iqr)
-    # from scipy.stats import iqr
 
     print("Grouping reviews by book_id...")
     reviews_df = reviews_df.groupby("book_id").agg({
@@ -327,46 +287,23 @@ def clean_reviews(lang: str, nrows: str="all", force: bool=False) -> str:
     return output_file
 
 
-def process_cleaned_reviews_chunks(force: bool=False):
+def process_cleaned_reviews_chunk(n_rows: str="10k", force: bool=False):
     """Split the cleaned_review dataset to smaller chunks."""
 
-    # for nrows in ["10k", "100k", "200k"]:
-    for nrows in N_ROWS_NAMES:
-        if nrows == "all":
-            continue
-        output_file = f"data/reviews_cleaned_ENG_{nrows}.csv"
-        if os.path.exists(output_file) and not force:
-            print(f"{output_file} already exists. Skipping processing.")
-            continue
+    output_file = f"data/reviews_cleaned_ENG_{n_rows}.csv"
+    if os.path.exists(output_file) and not force:
+        print(f"{output_file} already exists. Skipping processing.")
+        return output_file
 
-        print(f"Processing {nrows} rows...")
-        print("Reading raw reviews dataset...")
-        reviews = pd.read_csv("data/reviews_cleaned_ENG_all.csv",
-                                nrows=N_ROWS_MAP[nrows])
-        print("Sorting reviews by book_id...")
-        reviews.sort_values(by="book_id", inplace=True)
-        print("Saving reviews to CSV file...")
-        reviews.to_csv(f"data/reviews_cleaned_ENG_{nrows}.csv", index=False)
-
-
-def read_csv_subset(csv_file: str, columns: list=None) -> pd.DataFrame:
-    """
-    Read a subset of the books dataset for a specific language and number of rows.
-
-    Parameters
-    ----------
-    csv_file : str
-        The path to the CSV file containing the books data.
-    columns : list, optional
-        The list of columns to read from the dataset (default is None, which means all columns).
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame containing the requested subset of books data.
-    """
-    df = pd.read_csv(csv_file, usecols=columns)
-    return df
+    print(f"Processing {n_rows} rows...")
+    print("Reading raw reviews dataset...")
+    reviews = pd.read_csv("data/reviews_cleaned_ENG_all.csv",
+                            nrows=N_ROWS_MAP[n_rows])
+    print("Sorting reviews by book_id...")
+    reviews.sort_values(by="book_id", inplace=True)
+    print("Saving reviews to CSV file...")
+    reviews.to_csv(f"data/reviews_cleaned_ENG_{n_rows}.csv", index=False)
+    return output_file
 
 
 def extend_books_df(books_df: pd.DataFrame) -> pd.DataFrame:
@@ -416,7 +353,7 @@ def get_extended_books_df(lang: str) -> pd.DataFrame:
 
     books_file = f"data/raw/goodreads_books_{lang}.csv"
 
-    books_df = read_csv_subset(books_file, columns=books_features)
+    books_df = pd.read_csv(books_file, usecols=books_features)
     extended_books_df = extend_books_df(books_df)
     return extended_books_df
 
@@ -473,6 +410,7 @@ def add_author_names(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+@task
 def process_base_df(lang: str, force: bool=False) -> str:
     """
     Process the base reviews DataFrame by language and number of rows.
@@ -531,6 +469,7 @@ def process_base_df(lang: str, force: bool=False) -> str:
     return result
 
 
+@task
 def upload_to_bigquery(lang: str):
     """
     Upload the processed base reviews DataFrame for a specific language
@@ -559,94 +498,51 @@ def upload_to_bigquery(lang: str):
                                               chunk_size=50_000)
 
 
-def main():
+@flow(name=PREFECT_FLOW_NAME)
+def train_flow():
     """
     Main function to process books and reviews datasets.
     """
-    parser = argparse.ArgumentParser(
-        description="Process books and reviews datasets by language and number of rows."
-    )
 
-    parser.add_argument(
-        '--langs',
-        nargs='+',
-        choices=['FRA', 'ENG', 'DUT'],
-        default=['ENG'],
-        help='Languages to process (default: ENG)'
-    )
+    n_rows = "10k"
+    lang = "ENG"
 
-    parser.add_argument(
-        '--nrows',
-        nargs='+',
-        choices=['10k', '100k', '1M', 'all'],
-        default=['all'],
-        help='Number of rows to process for reviews_by_lang (default: all)'
-    )
-
-    parser.add_argument(
-        '--skip-books',
-        action='store_true',
-        help='Skip processing books datasets'
-    )
-
-    parser.add_argument(
-        '--skip-reviews-lang',
-        action='store_true',
-        help='Skip processing reviews by language'
-    )
-
-    parser.add_argument(
-        '--skip-reviews-clean',
-        action='store_true',
-        help='Skip processing cleaned reviews'
-    )
-
-    args = parser.parse_args()
-
-    print(f"Processing languages: {args.langs}")
-    print(f"Processing nrows: {args.nrows}")
+    print(f"Processing nrows: {n_rows}")
     print()
 
-    # Prepare books datasets by language
-    if not args.skip_books:
-        print("Preparing books datasets by language...")
-        process_books_by_lang(force=False)
-        # process_books_by_lang_df(force=False)
-        print()
+    # Prepare books datasets by language (ENG)
+    print("Preparing books datasets by language...")
+    process_all_books_task = process_books_by_lang_all.submit(force=False)
+    print()
 
     # Prepare reviews datasets by language and number of rows
-    if not args.skip_reviews_lang:
-        print("Preparing reviews datasets by language and number of rows...")
-        for lang in args.langs:
-            # for nrows in args.nrows:
-            for nrows in ["all"]:
-                process_reviews_by_lang(lang=lang, nrows=nrows, force=False)
-        # process_reviews_chunks()
-        print()
+    print("Preparing reviews datasets by language and number of rows...")
+    process_all_reviews_task = process_reviews_by_lang_all.submit(force=False,
+                                                                  wait_for=[process_all_books_task])
+    # process_reviews_chunk(n_rows=n_rows, force=False)
+    print()
 
     # Process reviews dataset by language and number of rows
-    if not args.skip_reviews_clean:
-        print("Processing cleaned reviews datasets...")
-        for lang in args.langs:
-            # for nrows in N_ROWS_NAMES:
-            for nrows in ["all"]:
-                clean_reviews(lang=lang, nrows=nrows, force=False)
-        # process_cleaned_reviews_chunks()
-        print()
+    print("Processing cleaned reviews datasets...")
+    clean_reviews_all_task = clean_reviews_all.submit(force=False,
+                                                      wait_for=[process_all_reviews_task])
+    # process_cleaned_reviews_chunk(n_rows=n_rows, force=False)
+    print()
 
     # Process base reviews dataset by language and number of rows
     print("Processing base reviews datasets...")
-    for lang in args.langs:
-        process_base_df(lang=lang, force=False)
+    process_base_df_task = process_base_df.submit(lang=lang,
+                                                  force=False,
+                                                  wait_for=[clean_reviews_all_task])
+    print()
 
     print("All processing completed!")
 
     # Upload base reviews datasets to BigQuery
-    print("Uploading base reviews datasets to BigQuery...")
-    for lang in args.langs:
-        upload_to_bigquery(lang=lang)
-    print("All datasets uploaded to BigQuery!")
+    # print("Uploading base reviews datasets to BigQuery...")
+    # upload_to_bigquery(lang=lang)
+    # print("All datasets uploaded to BigQuery!")
 
 
 if __name__ == "__main__":
-    main()
+    train_flow()

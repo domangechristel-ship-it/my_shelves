@@ -11,6 +11,7 @@ Purpose
 - Simplify maintenance (single place to update endpoints)
 
 """
+
 #HOST = '127.0.0.1:8000'
 HOST = 'my-shelves-image-151819310613.europe-west1.run.app'
 
