@@ -165,7 +165,7 @@ def get_books(book_id_list: list[int], nbr_rows: int = 10) -> pd.DataFrame:
     """
 
     client = bigquery.Client()
-    full_table_name = "books_dataset.base_reviews_ENG_10k"
+    full_table_name = "books_dataset.base_reviews_ENG_all"
 
     query = f"""
         SELECT *
