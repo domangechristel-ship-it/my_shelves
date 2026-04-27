@@ -19,20 +19,27 @@ class SimilarityKNNSK:
         self.data = None
         self.book_ids = None
 
-    def train(self, n_rows: str = "10k"):
+    def prepare_model(self, n_rows: str = "10k"):
         # Load datasets
         base = pd.read_csv(f"{DATASET_ROOT}/base_ENG_{n_rows}.csv")
-        emotions = pd.read_csv(f"{DATASET_ROOT}/emotions.csv", usecols=["book_id", "emotions", "top_emotion"])
-        locations = pd.read_csv(f"{DATASET_ROOT}/locations.csv", usecols=["book_id", "country", "region"])
+        emotions = pd.read_csv(f"{DATASET_ROOT}/emotions.csv",
+                               usecols=["book_id", "emotions", "top_emotion"])
+        locations = pd.read_csv(f"{DATASET_ROOT}/locations.csv",
+                                usecols=["book_id", "country", "region"])
 
-        # Merge on book_id with left joins to include all books from base
-        merged = base.merge(emotions, on="book_id", how="left").merge(locations, on="book_id", how="left")
+        # Merge on book_id with left joins
+        merged = base.merge(emotions, on="book_id", how="left")\
+            .merge(locations, on="book_id", how="left")
+        # Fill NaN: 0 for numerical, "unknown" for others
+        num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
+        merged[num_cols] = merged[num_cols].fillna(0)
+        merged = merged.fillna("unknown")
         merged = merged.set_index("book_id")
 
         self.data = merged
         self.book_ids = merged.index.tolist()
-        print(f"Loaded {len(self.data)} books, first 5 ids: {self.book_ids[:5]}")
 
+    def encode(self):
         # Define columns
         num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
         cat_cols = ["is_series", "author_names", "top_emotion", "country", "region"]
@@ -55,7 +62,13 @@ class SimilarityKNNSK:
 
         # Fit and transform
         X_encoded = self.pipeline.fit_transform(self.data)
+        return X_encoded
 
+    def train(self, n_rows: str = "10k"):
+        # Load datasets
+        self.prepare_model(n_rows=n_rows)
+        # Encode
+        X_encoded = self.encode()
         # Fit NearestNeighbors
         self.model = NearestNeighbors(n_neighbors=10)
         self.model.fit(X_encoded)
