@@ -172,6 +172,7 @@ def get_books(book_id_list: list[int], nbr_rows: int = 10) -> pd.DataFrame:
         SELECT *
         FROM `{full_table_name}`
         WHERE book_id IN UNNEST(@book_id_list)
+        order by total_shelves_count desc,average_rating desc
     """
 
     if nbr_rows is not None:
@@ -205,17 +206,37 @@ def get_id_by_country(country: str) -> list[int]:
     client = bigquery.Client()
 
     query = """
-        SELECT DISTINCT l.book_id,l.country,l.region,l.capital_latlng,l.resolved_as,b.average_rating,b.total_shelves_count
-        FROM `books_dataset.book_locations` l
-        INNER JOIN `books_dataset.base_reviews_ENG_all` b
-        ON l.book_id = b.book_id
-        WHERE LOWER(country) = LOWER('@country')
-        order by
-            case l.resolved_as
-            WHEN 'direct_country' THEN 1
-            WHEN 'geocoded' THEN 2
-            ELSE 3
-            END asc,b.total_shelves_count desc, b.average_rating desc
+        SELECT *
+        FROM (
+            SELECT
+                l.book_id,
+                b.title,
+                l.country,
+                l.region,
+                l.capital_latlng,
+                l.resolved_as,
+                b.average_rating,
+                b.total_shelves_count,
+                ROW_NUMBER() OVER (
+                    PARTITION BY lower(b.title)
+                    ORDER BY
+                        b.total_shelves_count DESC,
+                        b.average_rating DESC
+                ) AS rn
+            FROM `books_dataset.book_locations` l
+            INNER JOIN `books_dataset.base_reviews_ENG_all` b
+                ON l.book_id = b.book_id
+            WHERE LOWER(l.country) = LOWER(@country)
+        )
+        WHERE rn = 1
+        ORDER BY
+                        CASE resolved_as
+                            WHEN 'direct_country' THEN 1
+                            WHEN 'geocoded' THEN 2
+                            ELSE 3
+                        END ASC,
+                        total_shelves_count DESC,
+                        average_rating DESC
     """
 
     job_config = bigquery.QueryJobConfig(
