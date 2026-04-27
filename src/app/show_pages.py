@@ -175,7 +175,8 @@ def show_map() -> None:
             fill=True,
             fill_color=color,
             fill_opacity=0.7,
-            popup=f"{row['country']}: {row['count_books']} books"
+            popup=f"{row['country']}: {row['count_books']} books",
+            tooltip=f"{row['country']} ({row['count_books']} books)"
         ).add_to(m)
 
     map_data = st_folium(
@@ -215,6 +216,13 @@ def show_books_by_country() -> None:
     """
 
     st.subheader("📚 Books list")
+
+    if st.button("⬅ Back to map"):
+        st.session_state.country_page = "Map"
+        st.session_state.selected_country = None
+        st.query_params["country_page"] = "Map"
+        st.query_params.pop("country", None)
+        st.rerun()
 
     selected_country = st.session_state.get("selected_country")
 
@@ -259,13 +267,6 @@ def show_books_by_country() -> None:
 
         except requests.RequestException as exc:
             st.error(f"Request error: {exc}")
-
-    if st.button("⬅ Back to map"):
-        st.session_state.country_page = "Map"
-        st.session_state.selected_country = None
-        st.query_params["country_page"] = "Map"
-        st.query_params.pop("country", None)
-        st.rerun()
 
 def show_book_details() -> None:
     """Get a book id, fetch data from the API, and display the result."""

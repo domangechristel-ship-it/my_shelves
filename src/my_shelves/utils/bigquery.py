@@ -34,7 +34,7 @@ def get_book(book_id: int) -> pd.DataFrame:
         Returns an empty DataFrame if no book is found.
     """
     client = bigquery.Client()
-    full_table_name = "books_dataset.base_reviews_ENG_1M"
+    full_table_name = "books_dataset.base_reviews_ENG_all"
 
     query = f"""
         SELECT *
@@ -165,7 +165,8 @@ def get_books(book_id_list: list[int], nbr_rows: int = 10) -> pd.DataFrame:
     """
 
     client = bigquery.Client()
-    full_table_name = "books_dataset.base_reviews_ENG_10k"
+
+    full_table_name = "books_dataset.base_reviews_ENG_all"
 
     query = f"""
         SELECT *

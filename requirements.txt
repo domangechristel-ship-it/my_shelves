@@ -3,6 +3,8 @@ pandas-gbq
 ipykernel
 setuptools==70.0.0
 google-cloud-bigquery
+google-cloud-aiplatform
+google-cloud-storage
 db-dtypes
 fastapi
 uvicorn
@@ -12,12 +14,13 @@ countryinfo
 folium
 streamlit-folium
 transformers
+sentence-transformers
+torchvision
 scikit-learn
 joblib
 numpy
 tensorflow[and-cuda]==2.16.2
 tensorflow-hub
-sentence-transformers
 torch
 faiss-cpu
 prefect
