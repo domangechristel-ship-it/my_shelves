@@ -13,6 +13,17 @@ import joblib
 from my_shelves.ml.similarity.params import DATASET_ROOT, MODELS_ROOT, N_ROWS_NAMES
 
 
+NUM_COLS = ["n_votes",
+            "read_duration",
+            "average_rating",
+            "num_pages",
+            "ratings_count",
+            "total_shelves_count"
+            ]
+
+CAT_COLS = ["is_series", "author_names", "top_emotion", "country", "region"]
+
+
 class SimilaritySotaTF:
     def __init__(self):
         # Use TensorFlow Hub's Universal Sentence Encoder for text embeddings
@@ -23,40 +34,50 @@ class SimilaritySotaTF:
         self.embeddings = None
         self.les = {}
 
-    def train(self, n_rows: str = "10k"):
+    def prepare_model(self, n_rows: str = "10k"):
         # Load datasets
         base = pd.read_csv(f"{DATASET_ROOT}/base_ENG_{n_rows}.csv")
-        emotions = pd.read_csv(f"{DATASET_ROOT}/emotions.csv", usecols=["book_id", "emotions", "top_emotion"])
-        locations = pd.read_csv(f"{DATASET_ROOT}/locations.csv", usecols=["book_id", "country", "region"])
+        emotions = pd.read_csv(f"{DATASET_ROOT}/emotions.csv",
+                               usecols=["book_id", "emotions", "top_emotion"])
+        locations = pd.read_csv(f"{DATASET_ROOT}/locations.csv",
+                                usecols=["book_id", "country", "region"])
 
         # Merge on book_id with left joins
-        merged = base.merge(emotions, on="book_id", how="left").merge(locations, on="book_id", how="left")
+        merged = base.merge(emotions, on="book_id", how="left")\
+            .merge(locations, on="book_id", how="left")
         # Fill NaN: 0 for numerical, "unknown" for others
-        num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
-        merged[num_cols] = merged[num_cols].fillna(0)
+        merged[NUM_COLS] = merged[NUM_COLS].fillna(0)
         merged = merged.fillna("unknown")
         merged = merged.set_index("book_id")
 
         self.data = merged
         self.book_ids = merged.index.tolist()
 
+    def encode(self):
         # Prepare text for embedding
         text_cols = ['author_names', 'top_emotion', 'emotions', 'country', 'region']
-        merged['combined_text'] = merged[text_cols].astype(str).agg(' '.join, axis=1)
+        self.data['combined_text'] = self.data[text_cols].astype(str).agg(' '.join, axis=1)
 
         # Generate text embeddings with TF USE (GPU if available)
-        texts = merged['combined_text'].tolist()
+        texts = self.data['combined_text'].tolist()
         text_embeddings = self.embedder(texts).numpy()  # Convert to numpy
 
         # Scale numerical
         num_cols = ['n_votes', 'read_duration', 'average_rating', 'num_pages', 'ratings_count', 'total_shelves_count']
-        num_scaled = self.scaler.fit_transform(merged[num_cols])
+        num_scaled = self.scaler.fit_transform(self.data[num_cols])
 
         # Binary
-        binary = self._to_binary(merged['is_series']).reshape(-1, 1)
+        binary = self._to_binary(self.data['is_series']).reshape(-1, 1)
 
         # Concatenate embeddings
         self.embeddings = np.hstack([text_embeddings, num_scaled, binary]).astype(np.float32)
+
+    def train(self, n_rows: str = "10k"):
+        # Load datasets
+        self.prepare_model(n_rows=n_rows)
+
+        # Prepare text for embedding
+        self.embeddings = self.encode()
 
         # Normalize for cosine similarity
         faiss.normalize_L2(self.embeddings)

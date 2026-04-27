@@ -12,6 +12,17 @@ import torch
 from my_shelves.ml.similarity.params import DATASET_ROOT, MODELS_ROOT, N_ROWS_NAMES
 
 
+NUM_COLS = ["n_votes",
+            "read_duration",
+            "average_rating",
+            "num_pages",
+            "ratings_count",
+            "total_shelves_count"
+            ]
+
+CAT_COLS = ["is_series", "author_names", "top_emotion", "country", "region"]
+
+
 class SimilaritySotaTorch:
     def __init__(self):
         self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
@@ -23,40 +34,50 @@ class SimilaritySotaTorch:
         self.book_ids = None
         self.embeddings = None
 
-    def train(self,n_rows:str = "10k"):
+    def prepare_model(self, n_rows: str = "10k"):
         # Load datasets
         base = pd.read_csv(f"{DATASET_ROOT}/base_ENG_{n_rows}.csv")
-        emotions = pd.read_csv(f"{DATASET_ROOT}/emotions.csv", usecols=["book_id", "emotions", "top_emotion"])
-        locations = pd.read_csv(f"{DATASET_ROOT}/locations.csv", usecols=["book_id", "country", "region"])
+        emotions = pd.read_csv(f"{DATASET_ROOT}/emotions.csv",
+                               usecols=["book_id", "emotions", "top_emotion"])
+        locations = pd.read_csv(f"{DATASET_ROOT}/locations.csv",
+                                usecols=["book_id", "country", "region"])
 
         # Merge on book_id with left joins
-        merged = base.merge(emotions, on="book_id", how="left").merge(locations, on="book_id", how="left")
-        # Fill NaN: numeric columns with 0, others with "unknown"
-        num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
-        merged[num_cols] = merged[num_cols].fillna(0)
+        merged = base.merge(emotions, on="book_id", how="left")\
+            .merge(locations, on="book_id", how="left")
+        # Fill NaN: 0 for numerical, "unknown" for others
+        merged[NUM_COLS] = merged[NUM_COLS].fillna(0)
         merged = merged.fillna("unknown")
         merged = merged.set_index("book_id")
 
         self.data = merged
         self.book_ids = merged.index.tolist()
 
-        # Prepare text for embedding
+    def encode(self):
         text_cols = ['author_names', 'top_emotion', 'emotions', 'country', 'region']
-        merged['combined_text'] = merged[text_cols].astype(str).agg(' '.join, axis=1)
+        self.data['combined_text'] = self.data[text_cols].astype(str).agg(' '.join, axis=1)
 
         # Generate text embeddings
-        texts = merged['combined_text'].tolist()
+        texts = self.data['combined_text'].tolist()
         text_embeddings = self.embedder.encode(texts, show_progress_bar=True, batch_size=32)
 
         # Scale numerical
         num_cols = ['n_votes', 'read_duration', 'average_rating', 'num_pages', 'ratings_count', 'total_shelves_count']
-        num_scaled = self.scaler.fit_transform(merged[num_cols])
+        num_scaled = self.scaler.fit_transform(self.data[num_cols])
 
         # Binary
-        binary = self._to_binary(merged['is_series']).reshape(-1, 1)
+        binary = self._to_binary(self.data['is_series']).reshape(-1, 1)
 
         # Concatenate embeddings
         self.embeddings = np.hstack([text_embeddings, num_scaled, binary]).astype(np.float32)
+        return self.embeddings
+
+    def train(self,n_rows:str = "10k"):
+        # Load datasets
+        self.prepare_model(n_rows=n_rows)
+
+        # Prepare text for embedding
+        self.embeddings = self.encode()
 
         # Normalize for cosine similarity
         faiss.normalize_L2(self.embeddings)
