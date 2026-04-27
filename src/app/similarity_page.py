@@ -18,8 +18,29 @@ def show_similar_books() -> None:
     """
 
     st.subheader("📚 Books list")
-    # book_id = get_book_id_from_query_or_input()
-    book_id = st.text_input("Enter book ID:", "220708")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        model_name = st.selectbox(
+            "Choose a model:",
+            ("knn_tf", "knn_sk", "sota_torch", "sota_tf"),
+        )
+
+        # st.write("You selected:", model_name)
+    with col2:
+        training_dataset = st.selectbox(
+            "Choose a training dataset:",
+            ("10k", "20k", "50k", "100k", "150k", "200k", "all"),
+        )
+
+        # st.write("You selected:", training_dataset)
+
+    with col3:
+        # book_id = get_book_id_from_query_or_input()
+        book_id = st.text_input("Enter book ID:", "1")
+
+
     if not book_id:
         return
 
@@ -32,19 +53,22 @@ def show_similar_books() -> None:
         try:
             response_ids = requests.get(
                 API_URL_BOOK_IDS_SIMILAR,
-                params={"book_id": book_id},
+                params={"book_id": book_id,
+                        "model_name": model_name,
+                        "n_rows": training_dataset},
+                headers={"accept": "application/json"},
                 timeout=10
             )
 
             if response_ids.status_code == 404:
-                st.warning(f"(404) No similar books found for {book_id}.")
+                st.warning(f"(404) No similar books found for {book_id} with model {model_name}.")
             elif response_ids.status_code != 200:
                 st.error("Error while retrieving book IDs.")
             else:
                 book_ids = response_ids.json()
-                st.write(book_ids)
+                # st.write(book_ids)
                 if not book_ids:
-                    st.warning(f"No books found for {book_id}.")
+                    st.warning(f"No books found for {book_id} with model {model_name}.")
                 else:
                     params = [("book_id_list", book_id) for book_id in book_ids]
 
