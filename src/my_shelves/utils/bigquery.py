@@ -205,17 +205,17 @@ def get_id_by_country(country: str) -> list[int]:
     client = bigquery.Client()
 
     query = """
-        SELECT DISTINCT l.book_id,l.country,l.region,l.capital_latlng,l.resolved_as,b.average_rating
+        SELECT DISTINCT l.book_id,l.country,l.region,l.capital_latlng,l.resolved_as,b.average_rating,b.total_shelves_count
         FROM `books_dataset.book_locations` l
         INNER JOIN `books_dataset.base_reviews_ENG_all` b
         ON l.book_id = b.book_id
-        WHERE LOWER(country) = LOWER('sweden')
+        WHERE LOWER(country) = LOWER('@country')
         order by
             case l.resolved_as
             WHEN 'direct_country' THEN 1
             WHEN 'geocoded' THEN 2
             ELSE 3
-            END asc,b.average_rating desc
+            END asc,b.total_shelves_count desc, b.average_rating desc
     """
 
     job_config = bigquery.QueryJobConfig(
