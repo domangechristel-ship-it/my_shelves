@@ -92,7 +92,7 @@ dict_labels = {
         'multi_label': True
     },
 
-    'rhythm': {
+    'pace': {
         'labels': [
             "a fast-paced story with constant action",
             "a slow-paced story focused on atmosphere",
