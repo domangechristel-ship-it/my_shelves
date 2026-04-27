@@ -31,9 +31,9 @@ class SimilarityKNNSK:
         merged = base.merge(emotions, on="book_id", how="left")\
             .merge(locations, on="book_id", how="left")
         # Fill NaN: 0 for numerical, "unknown" for others
-        num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
-        merged[num_cols] = merged[num_cols].fillna(0)
-        merged = merged.fillna("unknown")
+        # num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
+        # merged[num_cols] = merged[num_cols].fillna(0)
+        # merged = merged.fillna("unknown")
         merged = merged.set_index("book_id")
 
         self.data = merged

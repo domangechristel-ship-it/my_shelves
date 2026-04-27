@@ -11,6 +11,17 @@ from tensorflow import keras
 from my_shelves.ml.similarity.params import DATASET_ROOT, MODELS_ROOT, N_ROWS_NAMES
 
 
+NUM_COLS = ["n_votes",
+            "read_duration",
+            "average_rating",
+            "num_pages",
+            "ratings_count",
+            "total_shelves_count"
+            ]
+
+CAT_COLS = ["is_series", "author_names", "top_emotion", "country", "region"]
+
+
 class SimilarityKNNTF:
     def __init__(self):
         self.scaler = None
@@ -21,37 +32,44 @@ class SimilarityKNNTF:
         self.book_ids = None
         self.embeddings = None
 
-    def train(self, n_rows: str = "10k"):
+    def prepare_model(self, n_rows: str = "10k"):
         # Load datasets
         base = pd.read_csv(f"{DATASET_ROOT}/base_ENG_{n_rows}.csv")
-        emotions = pd.read_csv(f"{DATASET_ROOT}/emotions.csv", usecols=["book_id", "emotions", "top_emotion"])
-        locations = pd.read_csv(f"{DATASET_ROOT}/locations.csv", usecols=["book_id", "country", "region"])
+        emotions = pd.read_csv(f"{DATASET_ROOT}/emotions.csv",
+                               usecols=["book_id", "emotions", "top_emotion"])
+        locations = pd.read_csv(f"{DATASET_ROOT}/locations.csv",
+                                usecols=["book_id", "country", "region"])
 
         # Merge on book_id with left joins
-        merged = base.merge(emotions, on="book_id", how="left").merge(locations, on="book_id", how="left")
-        # Fill NaNs: numeric columns with 0, others with "unknown"
-        num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
-        merged[num_cols] = merged[num_cols].fillna(0)
+        merged = base.merge(emotions, on="book_id", how="left")\
+            .merge(locations, on="book_id", how="left")
+        # Fill NaN: 0 for numerical, "unknown" for others
+        merged[NUM_COLS] = merged[NUM_COLS].fillna(0)
         merged = merged.fillna("unknown")
         merged = merged.set_index("book_id")
 
-        self.data = merged.copy()
+        self.data = merged
         self.book_ids = merged.index.tolist()
 
-        # Define columns
-        cat_cols = ["is_series", "author_names", "top_emotion", "country", "region"]
-
-        # Preprocess
+    def encode(self):
         self.scaler = StandardScaler()
-        merged[num_cols] = self.scaler.fit_transform(merged[num_cols])
+        merged = self.data.copy()
+        merged[NUM_COLS] = self.scaler.fit_transform(merged[NUM_COLS])
 
-        for col in cat_cols:
+        for col in CAT_COLS:
             le = LabelEncoder()
             merged[col] = le.fit_transform(merged[col].astype(str)) # <-- astype(str) is key
             self.les[col] = le
 
         # Save the encoded version for inference
         self.encoded_data = merged.copy()
+        return self.encoded_data
+
+    def train(self, n_rows: str = "10k"):
+        # Load datasets
+        self.prepare_model(n_rows=n_rows)
+        # Save the encoded version for inference
+        self.encoded_data = self.encode()
 
         # Build model
         inputs = {}
@@ -59,11 +77,11 @@ class SimilarityKNNTF:
         vocab_sizes = {}
         emb_dim = 10  # embedding dim for cat
 
-        for col in num_cols:
+        for col in NUM_COLS:
             inputs[col] = keras.Input(shape=(1,), name=col)
             embeddings.append(inputs[col])
 
-        for col in cat_cols:
+        for col in CAT_COLS:
             vocab_sizes[col] = len(self.les[col].classes_)
             inputs[col] = keras.Input(shape=(1,), name=col)
             emb_layer = keras.layers.Embedding(vocab_sizes[col], emb_dim, name=f'emb_{col}')(inputs[col])
@@ -78,14 +96,14 @@ class SimilarityKNNTF:
         # Decoder for reconstruction (only num for simplicity)
         decoder = keras.layers.Dense(64, activation='relu')(embedding)
         decoder = keras.layers.Dense(128, activation='relu')(decoder)
-        num_outputs = [keras.layers.Dense(1, name=f"output_{col}")(decoder) for col in num_cols]
+        num_outputs = [keras.layers.Dense(1, name=f"output_{col}")(decoder) for col in NUM_COLS]
 
         self.full_model = keras.Model(inputs=list(inputs.values()), outputs=num_outputs)
         self.full_model.compile(optimizer='adam', loss='mse')
 
         # Prepare data for training
-        X_train = {col: merged[col].values.reshape(-1, 1) for col in num_cols + cat_cols}
-        y_train = [merged[col].values for col in num_cols]
+        X_train = {col: self.encoded_data[col].values.reshape(-1, 1) for col in NUM_COLS + CAT_COLS}
+        y_train = [self.encoded_data[col].values for col in NUM_COLS]
 
         self.full_model.fit(X_train, y_train, epochs=10, batch_size=32, verbose=1)
 
@@ -127,13 +145,6 @@ class SimilarityKNNTF:
             f"{MODELS_ROOT}/knn_tf/knn_tf_data_tf_{n_rows}.pkl",
             f"{MODELS_ROOT}/knn_tf/knn_tf_encoded_data_tf_{n_rows}.pkl",  # ADD
         ]
-        # models/knn_tf/knn_tf_book_ids_10k.pkl
-        # models/knn_tf/knn_tf_data_tf.pkl_10k
-        # models/knn_tf/knn_tf_encoded_data_tf_10k.pkl
-        # models/knn_tf/knn_tf_encoder_tf_10k.h5
-        # models/knn_tf/knn_tf_les_10k.pkl
-        # models/knn_tf/knn_tf_nn.pkl_10k
-        # models/knn_tf/knn_tf_scaler_10k.pkl
         return all(os.path.exists(path) for path in required_files)
 
     def train_or_load(self, n_rows: str = "10k"):
