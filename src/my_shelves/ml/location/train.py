@@ -3,10 +3,13 @@ import os
 import pandas as pd
 from prefect import task, flow
 from prefect.artifacts import create_table_artifact
-from my_shelves.ml.classification.params import OUTPUT_FOLDER
+from my_shelves.ml.classification.params import OUTPUT_FOLDER, DATASET_ROOT
 from my_shelves.ml.location.location import Location
 
 PREFECT_FLOW_NAME="locations"
+
+OUTPUT_FOLDER = "data/location"
+
 
 
 @task
@@ -22,10 +25,17 @@ def get_locations(X: pd.DataFrame, n_rows: str = "10k") -> str:
 
 
 @flow(name=PREFECT_FLOW_NAME)
-def train_flow():
-    get_locations_task = get_locations.submit()
+def train_flow(n_rows: str = "10k"):
+    df = pd.read_csv(f"{DATASET_ROOT}/base_ENG_{n_rows}.csv",
+                     # nrows=100, # only for local tests
+                     usecols=["book_id", "description", "review_text"])
+    X = df.copy()
+
+    X.dropna(inplace=True)
+    get_locations_task = get_locations.submit(X, n_rows=n_rows)
     get_locations_task.result()
 
 
 if __name__ == "__main__":
-    train_flow()
+    n_rows  = "20k"
+    train_flow(n_rows=n_rows)
