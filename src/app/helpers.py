@@ -183,7 +183,14 @@ def render_book_details(book: dict) -> None:
 
     with col1:
         if book["image_url"]:
-            st.image(book["image_url"], use_container_width=True)
+            st.markdown(
+                f"""
+                <div style="text-align:center;">
+                    <img src="{book['image_url']}" style="max-height:400px; width:auto;">
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
         else:
             st.write("No cover available")
 

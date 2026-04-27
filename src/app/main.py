@@ -35,6 +35,7 @@ Requirements
 import streamlit as st
 from show_pages import show_book_details, show_map, show_books_by_country
 from similarity_page import show_similar_books
+from show_chatbot import show_chatbot
 
 
 st.set_page_config(page_title="Books App", layout="wide")
@@ -53,9 +54,10 @@ if "selected_country" not in st.session_state:
 # --------------------------------------------------
 st.title("📚 Book Shelves")
 
-tab_find_book, tab_country, tab_similar = st.tabs(["Find book",
+tab_find_book, tab_country, tab_similar, tab_chatbot = st.tabs(["Find book",
                                                    "Country",
-                                                   "Similar books"])
+                                                   "Similar books",
+                                                   "Chatbot"])
 
 # ==================================================
 # TAB 1 - FIND BOOK
@@ -89,3 +91,9 @@ with tab_similar:
 
     st.subheader("🔎 find a similar book by Id")
     show_similar_books()
+
+# ==================================================
+# TAB 4 - CHATBOT
+# ==================================================
+with tab_chatbot:
+    show_chatbot()
