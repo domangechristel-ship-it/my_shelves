@@ -167,7 +167,7 @@ def get_similar_book(book_id: str, model_name: str = None) -> list[int]:
         A list of IDs of similar books.
     """
 
-    book_ids = get_similarity(int(book_id), model_name=model_name, n_rows="10k")
+    book_ids = get_similarity(int(book_id), model_name=model_name, n_rows="100k")
     return book_ids
 
 @app.get("/books/chat-books")

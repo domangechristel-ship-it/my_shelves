@@ -2,7 +2,6 @@ import requests
 import streamlit as st
 
 from show_pages import show_books_table
-from my_shelves.api.vector_search import search_similar_books
 from params import API_URL_BOOKS,API_URL_SIMILAR_BOOKS
 
 
