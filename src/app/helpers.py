@@ -106,6 +106,30 @@ def get_book_id_from_query_or_input() -> str:
 
     return str(book_id).strip() if book_id else ""
 
+def get_search_value_from_query_or_input() -> str:
+    """Get search value from query params or persistent input."""
+
+    # 1. Initialize session_state if not exists
+    if "search_value" not in st.session_state:
+        query_value = st.query_params.get("book_id")
+
+        if isinstance(query_value, list):
+            query_value = query_value[0]
+
+        st.session_state.search_value = query_value or ""
+
+    # 2. Text input bound to session_state
+    search_value = st.text_input(
+        "Search by book ID or title:",
+        key="search_value",
+        placeholder="Example: 22077083 or Harry Potter",
+    )
+
+    return search_value.strip()
+
+def is_book_id(search_value: str) -> bool:
+    """Return True if the search value is an integer book_id."""
+    return search_value.strip().isdigit()
 
 def fetch_book_details(book_id: str) -> dict | None:
     """

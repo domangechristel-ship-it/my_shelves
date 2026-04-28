@@ -122,7 +122,6 @@ def upload_dataframe_to_bigquery(df: pd.DataFrame,
     print(message)
     return message
 
-
 @st.cache_data(ttl=3600)  # cache for 1 hour
 def get_country_counts() -> pd.DataFrame:
     """
@@ -145,7 +144,6 @@ def get_country_counts() -> pd.DataFrame:
 
     df = client.query(query).to_dataframe()
     return df
-
 
 def get_books(book_id_list: list[int], nbr_rows: int = 10) -> pd.DataFrame:
     """
@@ -218,10 +216,10 @@ def get_id_by_country(country: str) -> list[int]:
                 b.average_rating,
                 b.total_shelves_count,
                 ROW_NUMBER() OVER (
-                    PARTITION BY lower(b.title)
+                    PARTITION BY similar_books
                     ORDER BY
-                        b.total_shelves_count DESC,
-                        b.average_rating DESC
+                        total_shelves_count DESC,
+                        ratings_count DESC
                 ) AS rn
             FROM `books_dataset.book_locations` l
             INNER JOIN `books_dataset.base_reviews_ENG_all` b
@@ -256,9 +254,19 @@ def get_title(title: str):
     full_table_name = "books_dataset.base_reviews_ENG_all"
 
     query = f"""
-        SELECT title, book_id
+        SELECT * FROM
+        (SELECT title, book_id, image_url, average_rating,total_shelves_count,ratings_count,
+        ROW_NUMBER() OVER (
+                    PARTITION BY similar_books
+                    ORDER BY
+                        total_shelves_count DESC,
+                        ratings_count DESC
+                ) AS rn
         FROM {full_table_name}
-        WHERE LOWER(title) LIKE LOWER(CONCAT('%', @title, '%'))
+        WHERE LOWER(title) LIKE LOWER(CONCAT('%', @title, '%')))
+        WHERE rn = 1
+        ORDER BY total_shelves_count desc, average_rating desc
+        LIMIT 10
     """
 
     job_config = bigquery.QueryJobConfig(

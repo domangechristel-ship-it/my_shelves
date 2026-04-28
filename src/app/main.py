@@ -33,7 +33,7 @@ Requirements
 
 """
 import streamlit as st
-from show_pages import show_book_details, show_map, show_books_by_country
+from show_pages import show_find_book, show_map, show_books_by_country
 from show_features import show_book_by_filters
 # from similarity_page import show_similar_books
 # from show_chatbot import show_chatbot
@@ -66,7 +66,7 @@ tab_find_book, tab_country, tab_features, tab_similar, tab_chatbot = st.tabs(["F
 # ==================================================
 with tab_find_book:
     st.subheader("🔎 find book by Id")
-    show_book_details()
+    show_find_book()
 
 
     # ==================================================
