@@ -34,8 +34,9 @@ Requirements
 """
 import streamlit as st
 from show_pages import show_book_details, show_map, show_books_by_country
-from similarity_page import show_similar_books
-from show_chatbot import show_chatbot
+from show_features import show_book_by_filters
+# from similarity_page import show_similar_books
+# from show_chatbot import show_chatbot
 
 
 st.set_page_config(page_title="Books App", layout="wide")
@@ -54,8 +55,9 @@ if "selected_country" not in st.session_state:
 # --------------------------------------------------
 st.title("📚 Book Shelves")
 
-tab_find_book, tab_country, tab_similar, tab_chatbot = st.tabs(["Find book",
+tab_find_book, tab_country, tab_features, tab_similar, tab_chatbot = st.tabs(["Find book",
                                                    "Country",
+                                                   "Features",
                                                    "Similar books",
                                                    "Chatbot"])
 
@@ -66,8 +68,19 @@ with tab_find_book:
     st.subheader("🔎 find book by Id")
     show_book_details()
 
+
+    # ==================================================
+# TAB 2 - FEATURES
 # ==================================================
-# TAB 2 - COUNTRY
+with tab_features:
+
+    # st.subheader("🔎 find with Filters")
+    show_book_by_filters()
+
+
+
+# ==================================================
+# TAB 3 - COUNTRY
 # ==================================================
 with tab_country:
 
@@ -84,16 +97,16 @@ with tab_country:
         show_books_by_country()
 
 
-# ==================================================
-# TAB 3 - SIMILAR
-# ==================================================
-with tab_similar:
+# # ==================================================
+# # TAB 4 - SIMILAR
+# # ==================================================
+# with tab_similar:
 
-    st.subheader("🔎 find a similar book by Id")
-    show_similar_books()
+#     st.subheader("🔎 find a similar book by Id")
+#     show_similar_books()
 
-# ==================================================
-# TAB 4 - CHATBOT
-# ==================================================
-with tab_chatbot:
-    show_chatbot()
+# # ==================================================
+# # TAB 5 - CHATBOT
+# # ==================================================
+# with tab_chatbot:
+#     show_chatbot()

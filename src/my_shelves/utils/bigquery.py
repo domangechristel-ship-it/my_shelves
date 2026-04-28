@@ -220,3 +220,186 @@ def get_id_by_country(country: str) -> list[int]:
 
     # Return as a clean Python list
     return df["book_id"].dropna().astype(int).tolist()
+
+def get_title(title: str):
+
+    client = bigquery.Client()
+    full_table_name = "books_dataset.base_reviews_ENG_all"
+
+    query = f"""
+        SELECT title, book_id
+        FROM {full_table_name}
+        WHERE LOWER(title) LIKE LOWER(CONCAT('%', @title, '%'))
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("title", "STRING", title)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+    return df
+
+
+def get_id_by_emotion(emotion: str) -> list[int]:
+    """
+    Retrieve book IDs associated with a given emotion from BigQuery.
+
+    Parameters
+    ----------
+    emotion : str
+        Emotion keyword to search for (case-insensitive, partial match).
+
+    Returns
+    -------
+    list[int]
+        List of book_id values where the emotion field contains the given keyword.
+    """
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT *
+        FROM `books_dataset.merged_features`
+        WHERE LOWER(emotions) LIKE LOWER(CONCAT('%', @emotions, '%'))
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("emotions", "STRING", emotion)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+def get_id_by_content_intensity(content_intensity: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT *
+        FROM `books_dataset.merged_features`
+        WHERE LOWER(content_intensity) LIKE LOWER(CONCAT('%', @content_intensity, '%'))
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("content_intensity", "STRING", content_intensity)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+
+def get_id_by_romance_heat_level(romance_heat_level: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT *
+        FROM `books_dataset.merged_features`
+        WHERE LOWER(romance_heat_level) LIKE LOWER(CONCAT('%', @romance_heat_level, '%'))
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("romance_heat_level", "STRING", romance_heat_level)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+
+def get_id_by_character_type(character_type: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT *
+        FROM `books_dataset.merged_features`
+        WHERE LOWER(character_type) LIKE LOWER(CONCAT('%', @character_type, '%'))
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("character_type", "STRING", character_type)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+def get_id_by_main_themes(main_themes: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT *
+        FROM `books_dataset.merged_features`
+        WHERE LOWER(main_themes) LIKE LOWER(CONCAT('%', @main_themes, '%'))
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("main_themes", "STRING", main_themes)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+def get_id_by_pace(pace: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT *
+        FROM `books_dataset.merged_features`
+        WHERE LOWER(pace) LIKE LOWER(CONCAT('%', @pace, '%'))
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("pace", "STRING", pace)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+def get_id_by_sentiment(sentiment: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT *
+        FROM `books_dataset.merged_features`
+        WHERE LOWER(sentiment) LIKE LOWER(CONCAT('%', @sentiment, '%'))
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("sentiment", "STRING", sentiment)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
