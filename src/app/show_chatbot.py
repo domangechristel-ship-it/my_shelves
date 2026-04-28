@@ -2,58 +2,67 @@ import requests
 import streamlit as st
 
 from show_pages import show_books_table
-from vector_search import search_similar_books
-from params import API_URL_BOOKS
+from params import API_URL_BOOKS,API_URL_SIMILAR_BOOKS
 
 
 def show_chatbot() -> None:
     """
     Display the semantic book search chatbot page.
 
-    The user enters a natural language query, the app searches for similar books
-    using the vector search endpoint, retrieves the matching book details from
-    the API, and displays them in a table.
+    The user enters a natural language query, the app calls the API to search
+    similar books, retrieves the matching book details, and displays them.
     """
 
-    st.title("🤖 Book Search")
-
-    query = st.text_input(
-        "Search for a book",
+    query = st.text_area(
+        " ",
         placeholder="A fantasy story with dragons and adventure...",
         key="chatbot_query",
+        height=150
     )
 
     top_k = st.slider(
-        "Number of results",
+        "Number of books",
         min_value=1,
         max_value=20,
-        value=5,
+        value=3,
         key="chatbot_top_k",
     )
 
-    if st.button("Search", key="chatbot_search_button"):
+    if st.button("🔎 Search", key="chatbot_search_button"):
         if not query.strip():
             st.warning("Please enter a search query.")
             return
 
-        with st.spinner("Searching similar books..."):
-            results = search_similar_books(query, top_k=top_k)
-
-        if not results or not results[0]:
-            st.warning("No similar books found.")
-            return
-
-        neighbors = results[0]
-        book_ids = [neighbor.id for neighbor in neighbors]
-
-        params = [("book_id_list", book_id) for book_id in book_ids]
-
         try:
-            response_books = requests.get(
-                API_URL_BOOKS,
-                params=params,
-                timeout=20,
-            )
+            with st.spinner("Searching similar books..."):
+                response_search = requests.get(
+                    API_URL_SIMILAR_BOOKS,
+                    params={
+                        "query": query,
+                        "top_k": top_k,
+                    },
+                    timeout=30,
+                )
+
+            if response_search.status_code != 200:
+                st.error("Error while searching similar books.")
+                return
+
+            search_json = response_search.json()
+            book_ids = search_json.get("book_ids", [])
+
+            if not book_ids:
+                st.warning("No similar books found.")
+                return
+
+            params = [("book_id_list", book_id) for book_id in book_ids]
+
+            with st.spinner("Retrieving book details..."):
+                response_books = requests.get(
+                    API_URL_BOOKS,
+                    params=params,
+                    timeout=20,
+                )
 
             if response_books.status_code == 200:
                 st.subheader("Results")

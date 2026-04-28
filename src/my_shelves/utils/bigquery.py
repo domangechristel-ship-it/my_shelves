@@ -122,7 +122,6 @@ def upload_dataframe_to_bigquery(df: pd.DataFrame,
     print(message)
     return message
 
-
 @st.cache_data(ttl=3600)  # cache for 1 hour
 def get_country_counts() -> pd.DataFrame:
     """
@@ -145,7 +144,6 @@ def get_country_counts() -> pd.DataFrame:
 
     df = client.query(query).to_dataframe()
     return df
-
 
 def get_books(book_id_list: list[int], nbr_rows: int = 10) -> pd.DataFrame:
     """
@@ -172,6 +170,7 @@ def get_books(book_id_list: list[int], nbr_rows: int = 10) -> pd.DataFrame:
         SELECT *
         FROM `{full_table_name}`
         WHERE book_id IN UNNEST(@book_id_list)
+        order by total_shelves_count desc,average_rating desc
     """
 
     if nbr_rows is not None:
@@ -205,9 +204,37 @@ def get_id_by_country(country: str) -> list[int]:
     client = bigquery.Client()
 
     query = """
-        SELECT DISTINCT book_id
-        FROM `books_dataset.book_locations`
-        WHERE LOWER(country) = LOWER(@country)
+        SELECT *
+        FROM (
+            SELECT
+                l.book_id,
+                b.title,
+                l.country,
+                l.region,
+                l.capital_latlng,
+                l.resolved_as,
+                b.average_rating,
+                b.total_shelves_count,
+                ROW_NUMBER() OVER (
+                    PARTITION BY similar_books
+                    ORDER BY
+                        total_shelves_count DESC,
+                        ratings_count DESC
+                ) AS rn
+            FROM `books_dataset.book_locations` l
+            INNER JOIN `books_dataset.base_reviews_ENG_all` b
+                ON l.book_id = b.book_id
+            WHERE LOWER(l.country) = LOWER(@country)
+        )
+        WHERE rn = 1
+        ORDER BY
+                        CASE resolved_as
+                            WHEN 'direct_country' THEN 1
+                            WHEN 'geocoded' THEN 2
+                            ELSE 3
+                        END ASC,
+                        total_shelves_count DESC,
+                        average_rating DESC
     """
 
     job_config = bigquery.QueryJobConfig(
@@ -219,4 +246,223 @@ def get_id_by_country(country: str) -> list[int]:
     df = client.query(query, job_config=job_config).to_dataframe()
 
     # Return as a clean Python list
+    return df["book_id"].dropna().astype(int).tolist()
+
+def get_title(title: str):
+
+    client = bigquery.Client()
+    full_table_name = "books_dataset.base_reviews_ENG_all"
+
+    query = f"""
+        SELECT * FROM
+        (SELECT title, book_id, image_url, average_rating,total_shelves_count,ratings_count,
+        ROW_NUMBER() OVER (
+                    PARTITION BY similar_books
+                    ORDER BY
+                        total_shelves_count DESC,
+                        ratings_count DESC
+                ) AS rn
+        FROM {full_table_name}
+        WHERE LOWER(title) LIKE LOWER(CONCAT('%', @title, '%')))
+        WHERE rn = 1
+        ORDER BY total_shelves_count desc, average_rating desc
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("title", "STRING", title)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+    return df
+
+
+def get_id_by_emotion(emotion: str) -> list[int]:
+    """
+    Retrieve book IDs associated with a given emotion from BigQuery.
+
+    Parameters
+    ----------
+    emotion : str
+        Emotion keyword to search for (case-insensitive, partial match).
+
+    Returns
+    -------
+    list[int]
+        List of book_id values where the emotion field contains the given keyword.
+    """
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
+        WHERE LOWER(emotions) LIKE LOWER(CONCAT('%', @emotions, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("emotions", "STRING", emotion)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+def get_id_by_content_intensity(content_intensity: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
+        WHERE LOWER(content_intensity) LIKE LOWER(CONCAT('%', @content_intensity, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("content_intensity", "STRING", content_intensity)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+def get_id_by_romance_heat_level(romance_heat_level: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+        on m.book_id = b.book_id
+        WHERE LOWER(m.romance_heat_level) LIKE LOWER(CONCAT('%', @romance_heat_level, '%'))
+        and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("romance_heat_level", "STRING", romance_heat_level)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+def get_id_by_character_type(character_type: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
+        WHERE LOWER(character_type) LIKE LOWER(CONCAT('%', @character_type, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("character_type", "STRING", character_type)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+def get_id_by_main_themes(main_themes: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
+        WHERE LOWER(main_themes) LIKE LOWER(CONCAT('%', @main_themes, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("main_themes", "STRING", main_themes)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+def get_id_by_pace(pace: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
+        WHERE LOWER(pace) LIKE LOWER(CONCAT('%', @pace, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("pace", "STRING", pace)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
+    return df["book_id"].dropna().astype(int).tolist()
+
+def get_id_by_sentiment(sentiment: str) -> list[int]:
+
+    client = bigquery.Client()
+
+    query = """
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
+        WHERE LOWER(sentiment) LIKE LOWER(CONCAT('%', @sentiment, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
+        LIMIT 10
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("sentiment", "STRING", sentiment)
+        ]
+    )
+
+    df = client.query(query, job_config=job_config).to_dataframe()
+
     return df["book_id"].dropna().astype(int).tolist()

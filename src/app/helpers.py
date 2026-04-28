@@ -106,6 +106,30 @@ def get_book_id_from_query_or_input() -> str:
 
     return str(book_id).strip() if book_id else ""
 
+def get_search_value_from_query_or_input() -> str:
+    """Get search value from query params or persistent input."""
+
+    # 1. Initialize session_state if not exists
+    if "search_value" not in st.session_state:
+        query_value = st.query_params.get("book_id")
+
+        if isinstance(query_value, list):
+            query_value = query_value[0]
+
+        st.session_state.search_value = query_value or ""
+
+    # 2. Text input bound to session_state
+    search_value = st.text_input(
+        " ",
+        key="search_value",
+        placeholder="Example: 1885731 or Harry Potter",
+    )
+
+    return search_value.strip()
+
+def is_book_id(search_value: str) -> bool:
+    """Return True if the search value is an integer book_id."""
+    return search_value.strip().isdigit()
 
 def fetch_book_details(book_id: str) -> dict | None:
     """
@@ -124,24 +148,24 @@ def fetch_book_details(book_id: str) -> dict | None:
         )
 
         if response.status_code == 404:
-            st.warning("📚 Le livre n'a pas été retrouvé.")
+            st.warning("📕Book not found.")
             return None
 
         if response.status_code != 200:
-            st.error(f"⚠️ Erreur API (code {response.status_code})")
+            st.error(f"⚠️ Error API (code {response.status_code})")
             return None
 
         if not response.text.strip():
-            st.warning("📚 Le livre n'a pas été retrouvé.")
+            st.warning("📕Book not found.")
             return None
 
         return response.json()
 
     except requests.exceptions.JSONDecodeError:
-        st.warning("📚 Le livre n'a pas été retrouvé.")
+        st.warning("📕Book not found.")
         return None
     except requests.exceptions.RequestException as exc:
-        st.error(f"🚨 Erreur de connexion à l'API : {exc}")
+        st.error(f"🚨 Error connexion API : {exc}")
         return None
 
 
@@ -177,7 +201,7 @@ def render_book_details(book: dict) -> None:
     """Render the book details page."""
     st.markdown(BOOK_DETAILS_CSS, unsafe_allow_html=True)
 
-    st.title("📚 Book Details")
+    st.markdown("#### 📗 Book Details")
 
     col1, col2 = st.columns([1, 2])
 

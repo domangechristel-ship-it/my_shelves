@@ -3,12 +3,10 @@ from functools import lru_cache
 from google.cloud import aiplatform
 from sentence_transformers import SentenceTransformer
 
-
-PROJECT_ID = '151819310613' #"my-shelves-493916"
+PROJECT_ID = '151819310613'
 LOCATION = "europe-west1"
-INDEX_ENDPOINT_ID = '6454049692161409024' #"books-vector-endpoint"
-DEPLOYED_INDEX_ID = "books_deployed_index" #'6980794926703312896'
-
+INDEX_ENDPOINT_ID = '6454049692161409024'
+DEPLOYED_INDEX_ID = "books_deployed_index"
 MODEL_NAME = "all-MiniLM-L6-v2"
 
 

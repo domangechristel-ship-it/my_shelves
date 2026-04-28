@@ -16,9 +16,13 @@ Or via Docker:
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
+from typing import Optional, List
 from my_shelves.utils.bigquery import get_book, get_country_counts, get_books,get_id_by_country
+from my_shelves.utils.bigquery import get_title, get_id_by_emotion, get_id_by_content_intensity
+from my_shelves.utils.bigquery import get_id_by_romance_heat_level, get_id_by_character_type, get_id_by_main_themes
+from my_shelves.utils.bigquery import get_id_by_pace, get_id_by_sentiment
 from my_shelves.ml.similarity.similarity_query import get_similar_books
-
+from my_shelves.api.vector_search import search_similar_books
 
 app = FastAPI()
 
@@ -168,3 +172,102 @@ def get_similar_book(book_id: str, model_name: str = None) -> list[int]:
 
     book_ids = get_similar_books(int(book_id), model_name=model_name, n_rows="20k")
     return book_ids
+
+@app.get("/books/chat-books")
+def read_chat_books(query: str, top_k: int = 5):
+    """
+    Return book IDs from Vertex AI Vector Search.
+    """
+    try:
+        results = search_similar_books(query=query, top_k=top_k)
+
+        neighbors = results[0]
+
+        return {
+            "query": query,
+            "top_k": top_k,
+            "book_ids": [neighbor.id for neighbor in neighbors],
+            "results": [
+                {
+                    "book_id": neighbor.id,
+                    "distance": neighbor.distance,
+                }
+                for neighbor in neighbors
+            ],
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error while searching similar books: {str(e)}",
+        ) from e
+
+@app.get("/books/filter")
+def filter_books(
+    emotions: Optional[List[str]] = Query(default=None),
+    main_themes: Optional[List[str]] = Query(default=None),
+    content_intensity: Optional[str] = None,
+    romance_heat_level: Optional[str] = None,
+    character_type: Optional[str] = None,
+    pace: Optional[str] = None,
+    sentiment: Optional[str] = None,
+):
+    """
+    Multi-criteria filtering with AND logic.
+    Multi-select fields use OR internally, AND across categories.
+    """
+
+    book_ids = None
+
+    def intersect(new_ids):
+        nonlocal book_ids
+        new_ids = set(new_ids)
+        book_ids = new_ids if book_ids is None else book_ids & new_ids
+
+    # 🔹 Multi-select → union puis intersection globale
+    if emotions:
+        ids = set()
+        for emo in emotions:
+            ids |= set(get_id_by_emotion(emo))  # OR
+        intersect(ids)
+
+    if main_themes:
+        ids = set()
+        for theme in main_themes:
+            ids |= set(get_id_by_main_themes(theme))
+        intersect(ids)
+
+    # 🔹 Single filters → AND direct
+    if content_intensity:
+        intersect(get_id_by_content_intensity(content_intensity))
+
+    if romance_heat_level:
+        intersect(get_id_by_romance_heat_level(romance_heat_level))
+
+    if character_type:
+        intersect(get_id_by_character_type(character_type))
+
+    if pace:
+        intersect(get_id_by_pace(pace))
+
+    if sentiment:
+        intersect(get_id_by_sentiment(sentiment))
+
+    return list(book_ids) if book_ids else []
+
+@app.get("/read/title")
+def search_books_by_title(title: str):
+
+    df = get_title(title)
+
+    if df.empty:
+        raise HTTPException(
+            status_code=404,
+            detail="No books found for the provided title."
+        )
+
+    # Remplacer les NaN par None pour avoir un JSON valide
+    df = df.where(df.notna(), None)
+    df = df.astype(object).where(pd.notnull(df), None)
+
+    return df.to_dict(orient="records")

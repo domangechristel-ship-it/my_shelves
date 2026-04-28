@@ -33,12 +33,16 @@ Requirements
 
 """
 import streamlit as st
-from show_pages import show_book_details, show_map, show_books_by_country
+from show_pages import show_find_book, show_map, show_books_by_country
+from show_features import show_book_by_filters
 from similarity_page import show_similar_books
 from show_chatbot import show_chatbot
 
 
-st.set_page_config(page_title="Books App", layout="wide")
+st.set_page_config(
+    page_title="Books App",
+    page_icon="📚",
+    layout="wide")
 
 # --------------------------------------------------
 # Session state
@@ -54,8 +58,9 @@ if "selected_country" not in st.session_state:
 # --------------------------------------------------
 st.title("📚 Book Shelves")
 
-tab_find_book, tab_country, tab_similar, tab_chatbot = st.tabs(["Find book",
+tab_find_book, tab_country, tab_features, tab_similar, tab_chatbot = st.tabs(["Find book",
                                                    "Country",
+                                                   "Features",
                                                    "Similar books",
                                                    "Chatbot"])
 
@@ -63,11 +68,22 @@ tab_find_book, tab_country, tab_similar, tab_chatbot = st.tabs(["Find book",
 # TAB 1 - FIND BOOK
 # ==================================================
 with tab_find_book:
-    st.subheader("🔎 find book by Id")
-    show_book_details()
+    st.subheader("🔎 Find book by Id or Title")
+    show_find_book()
+
+
+    # ==================================================
+# TAB 2 - FEATURES
+# ==================================================
+with tab_features:
+
+    # st.subheader("🔎 find with Filters")
+    show_book_by_filters()
+
+
 
 # ==================================================
-# TAB 2 - COUNTRY
+# TAB 3 - COUNTRY
 # ==================================================
 with tab_country:
 
@@ -85,7 +101,7 @@ with tab_country:
 
 
 # ==================================================
-# TAB 3 - SIMILAR
+# TAB 4 - SIMILAR
 # ==================================================
 with tab_similar:
 
@@ -93,7 +109,8 @@ with tab_similar:
     show_similar_books()
 
 # ==================================================
-# TAB 4 - CHATBOT
+# TAB 5 - CHATBOT
 # ==================================================
 with tab_chatbot:
+    st.subheader("💬 Describe the book you're looking for ")
     show_chatbot()

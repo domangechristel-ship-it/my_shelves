@@ -49,11 +49,12 @@ Dependencies:
 - geopy
 - countryinfo
 """
-
+import pandas as pd
 from transformers import pipeline
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 from countryinfo import CountryInfo
+from countryinfo.exceptions import CountryNotFoundError
 
 
 class Location:
@@ -94,6 +95,60 @@ class Location:
 
         return [self._enrich_location(loc) for loc in location_list]
 
+    def get_locations(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Extract and enrich locations for each book description in a DataFrame.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame containing at least the columns:
+            - book_id
+            - description
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with one row per extracted location.
+        """
+        df = df[["book_id", "description"]].copy()
+
+        def safe_extract(description: str) -> list[dict]:
+            if pd.isna(description) or not str(description).strip():
+                return []
+
+            try:
+                return self.extract_locations(str(description))
+            except Exception:
+                return []
+
+        df["locations"] = df["description"].apply(safe_extract)
+
+        df_exploded = df.explode("locations", ignore_index=True)
+        df_exploded = df_exploded[df_exploded["locations"].notna()].copy()
+
+        if df_exploded.empty:
+            return pd.DataFrame(
+                columns=[
+                    "book_id",
+                    "country",
+                    "region",
+                    "capital_latlng",
+                    "resolved_as",
+                ]
+            )
+
+        location_cols = pd.json_normalize(df_exploded["locations"])
+
+        df_locations = pd.concat(
+            [
+                df_exploded.drop(columns=["description", "locations"]).reset_index(drop=True),
+                location_cols.reset_index(drop=True),
+            ],
+            axis=1,
+        )
+
+        return df_locations
     # --------------------------------------------------
     # PRIVATE METHODS
     # --------------------------------------------------
@@ -125,23 +180,22 @@ class Location:
         return unique_words
 
     def _enrich_location(self, location: str) -> dict:
-        """Resolve a location string into country info."""
+        try:
+            if location is None or str(location).strip() == "":
+                return self.empty_result("empty")
 
-        if location is None or str(location).strip() == "":
-            return self.empty_result("empty")
+            location = str(location).strip()
 
-        location = str(location).strip()
+            direct = self._safe_countryinfo_country(location)
+            if direct:
+                return direct
 
-        # 1) Try direct country
-        direct = self._safe_countryinfo_country(location)
-        if direct:
-            return direct
+            return self._safe_geocode_country(location)
 
-        # 2) Fallback geocode
-        return self._safe_geocode_country(location)
+        except Exception:
+            return self.empty_result("error")
 
     def _safe_countryinfo_country(self, location: str):
-        """Try direct CountryInfo lookup."""
         try:
             info = CountryInfo(location)
             return {
@@ -150,7 +204,7 @@ class Location:
                 "capital_latlng": info.capital_latlng(),
                 "resolved_as": "direct_country"
             }
-        except ValueError:
+        except (ValueError, CountryNotFoundError):
             return None
 
     def _safe_geocode_country(self, location: str):
