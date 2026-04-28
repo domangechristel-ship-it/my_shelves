@@ -13,14 +13,6 @@ def show_chatbot() -> None:
     similar books, retrieves the matching book details, and displays them.
     """
 
-    # st.markdown("#### 💬🤖 Book Search")
-
-    # query = st.text_input(
-    #     "Search for a book",
-    #     placeholder="A fantasy story with dragons and adventure...",
-    #     key="chatbot_query",
-    # )
-
     query = st.text_area(
         " ",
         placeholder="A fantasy story with dragons and adventure...",
