@@ -72,7 +72,7 @@ def show_book_by_filters():
                     headers={"accept": "application/json"},
                     timeout=20
                 )
-
+                # st.warning(response_ids.text)
 
                 if response_ids.status_code != 200:
                     st.error(f"API error: {response_ids.status_code}")

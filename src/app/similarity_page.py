@@ -5,7 +5,7 @@
 import requests
 import streamlit as st
 
-from params import API_URL_BOOKS, API_URL_BOOK_IDS_SIMILAR
+from params import API_URL_BOOKS, API_URL_BOOK_IDS_SIMILAR,API_URL_BOOK
 from show_pages import show_books_table
 # from helpers import (
 #     get_book_id_from_query_or_input,
@@ -57,8 +57,25 @@ def show_similar_books() -> None:
         st.warning("Choose a book ID first.")
 
     else:
-        st.write(f"Books for **{book_id}**:")
+        response = requests.get(f"{API_URL_BOOK}?book_id={book_id}", timeout=30)
+        response.raise_for_status()
 
+        book = response.json()
+        title = book.get("title", book_id)
+
+        st.markdown(
+            f"""
+            <div style="
+                padding:15px;
+                border-radius:10px;
+                background-color:#f5f5f5;
+                margin-bottom:10px;
+            ">
+                📗 Similar books based on <b>{title}</b><br>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         try:
             response_ids = requests.get(
                 API_URL_BOOK_IDS_SIMILAR,
