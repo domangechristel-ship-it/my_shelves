@@ -58,7 +58,8 @@ from helpers import (
     is_book_id,
     get_search_value_from_query_or_input,
     get_country_data,
-    get_by_country
+    get_by_country,
+    get_books_by_title
 )
 from params import API_URL_BOOKS, API_URL_READ_TITLE
 
@@ -292,11 +293,7 @@ def show_books_by_title(title: str) -> list[dict] | None:
     """Fetch books matching a title from the API."""
 
     try:
-        response = requests.get(
-            API_URL_READ_TITLE,
-            params={"title": title}
-            # ,timeout=10
-        )
+        response = get_books_by_title(title)
 
         if response.status_code == 404:
             st.warning("📕 No books found for this title.")
