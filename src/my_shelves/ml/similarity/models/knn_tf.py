@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.neighbors import NearestNeighbors
 import tensorflow as tf
 from tensorflow import keras
+
 from my_shelves.ml.similarity.params import DATASET_ROOT, MODELS_ROOT, N_ROWS_NAMES
 
 
@@ -19,7 +20,15 @@ NUM_COLS = ["n_votes",
             "total_shelves_count"
             ]
 
-CAT_COLS = ["is_series", "author_names", "top_emotion", "country", "region"]
+CAT_COLS = ["is_series", "author_names"]
+
+CLASSIFICATION_COLS = ['emotions', 'content_intensity',
+       'romance_heat_level', 'character_type', 'main_themes', 'pace',
+       'sentiment']
+
+LOCATION_COLS = ["country", "region"]
+
+CAT_COLS = CAT_COLS + CLASSIFICATION_COLS + LOCATION_COLS
 
 
 class SimilarityKNNTF:
@@ -34,22 +43,9 @@ class SimilarityKNNTF:
 
     def prepare_model(self, n_rows: str = "10k"):
         # Load datasets
-        base = pd.read_csv(f"{DATASET_ROOT}/base_ENG_{n_rows}.csv")
-        emotions = pd.read_csv(f"{DATASET_ROOT}/emotions.csv",
-                               usecols=["book_id", "emotions", "top_emotion"])
-        locations = pd.read_csv(f"{DATASET_ROOT}/locations.csv",
-                                usecols=["book_id", "country", "region"])
-
-        # Merge on book_id with left joins
-        merged = base.merge(emotions, on="book_id", how="left")\
-            .merge(locations, on="book_id", how="left")
-        # Fill NaN: 0 for numerical, "unknown" for others
-        merged[NUM_COLS] = merged[NUM_COLS].fillna(0)
-        merged = merged.fillna("unknown")
-        merged = merged.set_index("book_id")
-
-        self.data = merged
-        self.book_ids = merged.index.tolist()
+        self.data = pd.read_csv(f"{DATASET_ROOT}/similarity/extended_ENG_{n_rows}.csv")
+        self.book_ids = self.data.index.tolist()
+        # self.book_ids = self.data["book_id"].to_list()
 
     def encode(self):
         self.scaler = StandardScaler()
@@ -125,6 +121,7 @@ class SimilarityKNNTF:
         joblib.dump(self.model, f"{MODELS_ROOT}/knn_tf/knn_tf_nn_{n_rows}.pkl")
         joblib.dump(self.data, f"{MODELS_ROOT}/knn_tf/knn_tf_data_tf_{n_rows}.pkl")
         joblib.dump(self.encoded_data, f"{MODELS_ROOT}/knn_tf/knn_tf_encoded_data_tf_{n_rows}.pkl")  # ADD
+        joblib.dump(self.embeddings, f"{MODELS_ROOT}/knn_tf/knn_tf_embeddings_{n_rows}.pkl")
 
     def load(self, n_rows: str = "10k"):
         self.encoder_model = keras.models.load_model(f"{MODELS_ROOT}/knn_tf/knn_tf_encoder_tf_{n_rows}.h5")
@@ -134,6 +131,7 @@ class SimilarityKNNTF:
         self.model = joblib.load(f"{MODELS_ROOT}/knn_tf/knn_tf_nn_{n_rows}.pkl")
         self.data = joblib.load(f"{MODELS_ROOT}/knn_tf/knn_tf_data_tf_{n_rows}.pkl")
         self.encoded_data = joblib.load(f"{MODELS_ROOT}/knn_tf/knn_tf_encoded_data_tf_{n_rows}.pkl")  # ADD
+        self.embeddings = joblib.load(f"{MODELS_ROOT}/knn_tf/knn_tf_embeddings_{n_rows}.pkl")
 
     def is_saved(self, n_rows: str = "10k"):
         required_files = [
@@ -144,6 +142,7 @@ class SimilarityKNNTF:
             f"{MODELS_ROOT}/knn_tf/knn_tf_nn_{n_rows}.pkl",
             f"{MODELS_ROOT}/knn_tf/knn_tf_data_tf_{n_rows}.pkl",
             f"{MODELS_ROOT}/knn_tf/knn_tf_encoded_data_tf_{n_rows}.pkl",  # ADD
+            f"{MODELS_ROOT}/knn_tf/knn_tf_embeddings_{n_rows}.pkl",
         ]
         return all(os.path.exists(path) for path in required_files)
 
@@ -156,9 +155,19 @@ class SimilarityKNNTF:
             self.train(n_rows=n_rows)
             self.save(n_rows=n_rows)
 
-    def get_similar(self, book_id):
+    def get_similar(self, book_id, n_rows: str = "10k"):
         if book_id not in self.book_ids:
             return []
+        # if os.path.exists(f"{DATASET_ROOT}/similarity/knn_tf_cache_{n_rows}.csv"):
+        #     print("_" * 80)
+        #     print("Use cached similar books")
+        #     print("_" * 80)
+        #     cache_df = pd.read_csv(f"{DATASET_ROOT}/similarity/knn_tf_cache_{n_rows}.csv")
+        #     similar_indices = cache_df[cache_df["book_id"] == book_id]["similar_books"].apply(eval).values[0]
+        #     # similar_book_ids = [self.book_ids[i] for i in similar_indices]
+        #     print(type(similar_indices), similar_indices)
+        #     return similar_indices
+
         # Get and preprocess the row
         num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
         cat_cols = list(self.les.keys())
@@ -174,6 +183,44 @@ class SimilarityKNNTF:
         similar_indices = indices[0]
         similar_book_ids = [self.book_ids[i] for i in similar_indices]
         return similar_book_ids
+
+    def save_cache(self, n_rows: str = "10k"):
+        """
+        Save a minimal similarity cache:
+        ["book_id", "similar_books", "similarity_distance"]
+        """
+
+        if self.embeddings is None:
+            raise ValueError("Embeddings not found. Train or load model first.")
+
+        # Compute neighbors for ALL rows at once (fast)
+        distances, indices = self.model.kneighbors(self.embeddings, return_distance=True)
+
+        # Map indices -> book_ids
+        similar_books = [
+            [self.book_ids[i] for i in row]
+            for row in indices
+        ]
+
+        similarity_distances = distances.tolist()
+
+        # Build minimal dataframe
+        cache_df = pd.DataFrame({
+            "book_id": self.book_ids,
+            "similar_books": similar_books,
+            "similarity_distance": similarity_distances
+        })
+
+        # Optional: serialize lists to make CSV cleaner
+        import json
+        cache_df["similar_books"] = cache_df["similar_books"].apply(json.dumps)
+        cache_df["similarity_distance"] = cache_df["similarity_distance"].apply(json.dumps)
+
+        # Save
+        output_path = f"{DATASET_ROOT}/similarity/knn_tf_cache_{n_rows}.csv"
+        cache_df.to_csv(output_path, index=False)
+
+        return cache_df
 
 
 if __name__ == "__main__":

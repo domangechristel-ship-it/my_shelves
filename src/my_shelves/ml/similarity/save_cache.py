@@ -19,32 +19,12 @@ PREFECT_FLOW_NAME="similarity"
 
 
 @task
-def prepare_csv(n_rows: str = "10k") -> str:
-    # Load datasets
-    start = datetime.datetime.now()
-    output_file = prepare_data(n_rows=n_rows)
-    end = datetime.datetime.now()
-    duration = (end - start).total_seconds() / 60
-
-    table = [
-       {'n_rows': n_rows,
-        'duration': duration
-        }
-    ]
-    create_table_artifact(
-        key="prepare-data",
-        table=table,
-        description= "# Prepare extended dataset for similarity models."
-    )
-    return output_file
-
-
-@task
-def train_knn_tf(n_rows: str = "10k") -> str:
+def save_cache_knn_tf(n_rows: str = "10k") -> str:
     start = datetime.datetime.now()
 
     knn_tf_model = SimilarityKNNTF()
     knn_tf_model.train_or_load(n_rows=n_rows)
+    knn_tf_model.save_cache(n_rows=n_rows)
 
     end = datetime.datetime.now()
     duration = (end - start).total_seconds() / 60
@@ -153,23 +133,21 @@ def train_flow(n_rows: str = "10k"):
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
 
-    prepare_csv_task = prepare_csv.submit(n_rows=n_rows)
+    knn_tf_task = save_cache_knn_tf.submit(n_rows=n_rows)
+    # knn_sk_task = train_knn_sk.submit(n_rows=n_rows, wait_for=[knn_tf_task])
+    # sota_tf_task = train_sota_tf.submit(n_rows=n_rows, wait_for=[knn_sk_task])
+    # sota_torch_task = train_sota_torch.submit(n_rows=n_rows, wait_for=[sota_tf_task])
 
-    knn_tf_task = train_knn_tf.submit(n_rows=n_rows, wait_for=[prepare_csv_task])
-    knn_sk_task = train_knn_sk.submit(n_rows=n_rows, wait_for=[knn_tf_task])
-    sota_tf_task = train_sota_tf.submit(n_rows=n_rows, wait_for=[knn_sk_task])
-    sota_torch_task = train_sota_torch.submit(n_rows=n_rows, wait_for=[sota_tf_task])
-
-    prepare_csv_task.result()
     knn_tf_result = knn_tf_task.result()
-    knn_sk_result = knn_sk_task.result()
-    sota_tf_result = sota_tf_task.result()
-    sota_torch_result = sota_torch_task.result()
+    # knn_sk_result = knn_sk_task.result()
+    # sota_tf_result = sota_tf_task.result()
+    # sota_torch_result = sota_torch_task.result()
 
     notify_task = notify.submit(msg=[knn_tf_result,
-                                     knn_sk_result,
-                                     sota_tf_result,
-                                     sota_torch_result])
+                                     # knn_sk_result,
+                                     # sota_tf_result,
+                                     # sota_torch_result
+                                     ])
     notify_task.result()
 
 

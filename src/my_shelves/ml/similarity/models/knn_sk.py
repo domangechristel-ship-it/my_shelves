@@ -12,6 +12,25 @@ from sklearn.impute import SimpleImputer
 from my_shelves.ml.similarity.params import DATASET_ROOT, MODELS_ROOT, N_ROWS_NAMES
 
 
+NUM_COLS = ["n_votes",
+            "read_duration",
+            "average_rating",
+            "num_pages",
+            "ratings_count",
+            "total_shelves_count"
+            ]
+
+CAT_COLS = ["is_series", "author_names"]
+
+CLASSIFICATION_COLS = ['emotions', 'content_intensity',
+       'romance_heat_level', 'character_type', 'main_themes', 'pace',
+       'sentiment']
+
+LOCATION_COLS = ["country", "region"]
+
+CAT_COLS = CAT_COLS + CLASSIFICATION_COLS + LOCATION_COLS
+
+
 class SimilarityKNNSK:
     def __init__(self):
         self.pipeline = None
@@ -21,40 +40,21 @@ class SimilarityKNNSK:
 
     def prepare_model(self, n_rows: str = "10k"):
         # Load datasets
-        base = pd.read_csv(f"{DATASET_ROOT}/base_ENG_{n_rows}.csv")
-        emotions = pd.read_csv(f"{DATASET_ROOT}/emotions.csv",
-                               usecols=["book_id", "emotions", "top_emotion"])
-        locations = pd.read_csv(f"{DATASET_ROOT}/locations.csv",
-                                usecols=["book_id", "country", "region"])
-
-        # Merge on book_id with left joins
-        merged = base.merge(emotions, on="book_id", how="left")\
-            .merge(locations, on="book_id", how="left")
-        # Fill NaN: 0 for numerical, "unknown" for others
-        # num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
-        # merged[num_cols] = merged[num_cols].fillna(0)
-        # merged = merged.fillna("unknown")
-        merged = merged.set_index("book_id")
-
-        self.data = merged
-        self.book_ids = merged.index.tolist()
+        self.data = pd.read_csv(f"{DATASET_ROOT}/similarity/extended_ENG_{n_rows}.csv")
+        self.book_ids = self.data.index.tolist()
 
     def encode(self):
-        # Define columns
-        num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
-        cat_cols = ["is_series", "author_names", "top_emotion", "country", "region"]
-
         # Preprocessing pipeline with imputers
         preprocessor = ColumnTransformer(
             transformers=[
                 ("num", Pipeline([
                     ("imputer", SimpleImputer(strategy="mean")),
                     ("scaler", StandardScaler())
-                ]), num_cols),
+                ]), NUM_COLS),
                 ("cat", Pipeline([
                     ("imputer", SimpleImputer(strategy="constant", fill_value="unknown")),
                     ("encoder", OneHotEncoder(handle_unknown="ignore"))
-                ]), cat_cols)
+                ]), CAT_COLS)
             ],
             remainder="drop"
         )

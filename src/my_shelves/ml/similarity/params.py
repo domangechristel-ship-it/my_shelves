@@ -16,10 +16,10 @@ N_ROWS_NAMES = N_ROWS_MAP.keys()
 
 BASE_FEATURES = []
 LOCATION_FEATURES = ["book_id", "country", "region"]
-EMOTION_FEATURES = ['emotions', 'top_emotion',
-                    'cont_labels', 'cont_best_label',
-                    'roma_labels', 'roma_best_label',
-                    'char_labels', 'char_best_label',
-                    'main_labels', 'main_best_label',
-                    'pace_labels', 'pace_best_label',
-                    'sentiment']
+CLASSIFICATION_FEATURES = ['emotions', 'top_emotion',
+                           'cont_labels', 'cont_best_label',
+                           'roma_labels', 'roma_best_label',
+                           'char_labels', 'char_best_label',
+                           'main_labels', 'main_best_label',
+                           'pace_labels', 'pace_best_label',
+                           'sentiment']

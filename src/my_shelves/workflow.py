@@ -12,7 +12,7 @@ PREFECT_FLOW_NAME="train-all"
 
 
 @flow(name=PREFECT_FLOW_NAME)
-def train_flow(n_rows: str = "10k"):
+def train_flow(n_rows: str = "20k"):
     prepare_task = prepare_flow()
 
     locations_task = locations_flow(wait_for=[prepare_task])
@@ -23,5 +23,5 @@ def train_flow(n_rows: str = "10k"):
 
 
 if __name__ == "__main__":
-    n_rows = "20k"
+    n_rows = "50k"
     train_flow(n_rows=n_rows)

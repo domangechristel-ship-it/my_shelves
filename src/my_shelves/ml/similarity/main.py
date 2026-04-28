@@ -139,7 +139,9 @@ def load_model(n_rows: str = "10k"):
     return model
 
 
-def get_similarity(book_id: int, model_name: str = None, n_rows: str = "10k") -> list[int]:
+def get_similarity(book_id: int,
+                   model_name: str = None,
+                   n_rows: str = "20k") -> list[int]:
     """
     Retrieve a list of similar books based on a given book_id.
 
@@ -154,25 +156,30 @@ def get_similarity(book_id: int, model_name: str = None, n_rows: str = "10k") ->
         A list of IDs of similar books.
     """
     print("Getting similarity...")
-    if model_name == "knn_base":
-        model = load_model("10k")
-        print("Getting similar books...")
-        similar_books = model.get_similar(book_id)
-        return similar_books
-    elif model_name == "knn_tf":
+    if model_name == "knn_tf":
+        # if os.path.exists(f"{DATASET_ROOT}/similarity/knn_tf_cache_{n_rows}.csv"):
+        #     print("_" * 80)
+        #     print("Use cached similar books")
+        #     print("_" * 80)
+        #     cache_df = pd.read_csv(f"{DATASET_ROOT}/similarity/knn_tf_cache_{n_rows}.csv")
+        #     similar_books = cache_df[cache_df["book_id"] == book_id]["similar_books"].apply(eval).values[0]
+        #     return similar_books
         from my_shelves.ml.similarity.models import knn_tf
         model = knn_tf.SimilarityKNNTF()
         model.train_or_load(n_rows=n_rows)
         # Test
-        similar_books = model.get_similar(book_id)
+        similar_books = model.get_similar(book_id, n_rows=n_rows)
+        similar_books.insert(0, book_id)
         return similar_books
     elif model_name == "knn_sk":
         from my_shelves.ml.similarity.models import knn_sk
         model = knn_sk.SimilarityKNNSK()
         model.train_or_load(n_rows=n_rows)
         # Test
-        print(f"Getting similar with knn_sk model with {n_rows} rows dataset...", flush=True)
+        print(f"Getting similar with knn_sk model with {n_rows} rows dataset...",
+              flush=True)
         similar_books = model.get_similar(1)
+        similar_books.insert(0, book_id)
         return similar_books
     elif model_name == "sota_torch":
         from my_shelves.ml.similarity.models import sota_torch
@@ -180,6 +187,7 @@ def get_similarity(book_id: int, model_name: str = None, n_rows: str = "10k") ->
         model.train_or_load(n_rows=n_rows)
         # Test
         similar_books = model.get_similar(book_id)
+        similar_books.insert(0, book_id)
         return similar_books
     elif model_name == "sota_tf":
         from my_shelves.ml.similarity.models import sota_tf
@@ -187,6 +195,7 @@ def get_similarity(book_id: int, model_name: str = None, n_rows: str = "10k") ->
         model.train_or_load(n_rows=n_rows)
         # Test
         similar_books = model.get_similar(book_id)
+        similar_books.insert(0, book_id)
         return similar_books
 
     return []

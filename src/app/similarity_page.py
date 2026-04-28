@@ -19,7 +19,7 @@ def show_similar_books() -> None:
 
     st.subheader("📚 Books list")
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     with col1:
         model_name = st.selectbox(
@@ -28,15 +28,15 @@ def show_similar_books() -> None:
         )
 
         # st.write("You selected:", model_name)
-    with col2:
-        training_dataset = st.selectbox(
-            "Choose a training dataset:",
-            ("10k", "20k", "50k", "100k", "150k", "200k", "all"),
-        )
+    # with col2:
+    #     training_dataset = st.selectbox(
+    #         "Choose a training dataset:",
+    #         ("10k", "20k", "50k", "100k", "150k", "200k", "all"),
+    #     )
 
         # st.write("You selected:", training_dataset)
 
-    with col3:
+    with col2:
         # book_id = get_book_id_from_query_or_input()
         book_id = st.text_input("Enter book ID:", "1")
 
@@ -54,8 +54,7 @@ def show_similar_books() -> None:
             response_ids = requests.get(
                 API_URL_BOOK_IDS_SIMILAR,
                 params={"book_id": book_id,
-                        "model_name": model_name,
-                        "n_rows": training_dataset},
+                        "model_name": model_name},
                 headers={"accept": "application/json"},
                 timeout=10
             )
@@ -66,7 +65,7 @@ def show_similar_books() -> None:
                 st.error("Error while retrieving book IDs.")
             else:
                 book_ids = response_ids.json()
-                # st.write(book_ids)
+                st.write(book_ids)
                 if not book_ids:
                     st.warning(f"No books found for {book_id} with model {model_name}.")
                 else:
