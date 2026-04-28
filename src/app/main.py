@@ -35,11 +35,14 @@ Requirements
 import streamlit as st
 from show_pages import show_find_book, show_map, show_books_by_country
 from show_features import show_book_by_filters
-# from similarity_page import show_similar_books
-# from show_chatbot import show_chatbot
+from similarity_page import show_similar_books
+from show_chatbot import show_chatbot
 
 
-st.set_page_config(page_title="Books App", layout="wide")
+st.set_page_config(
+    page_title="Books App",
+    page_icon="📚",
+    layout="wide")
 
 # --------------------------------------------------
 # Session state
@@ -65,7 +68,7 @@ tab_find_book, tab_country, tab_features, tab_similar, tab_chatbot = st.tabs(["F
 # TAB 1 - FIND BOOK
 # ==================================================
 with tab_find_book:
-    st.subheader("🔎 find book by Id")
+    st.subheader("🔎 Find book by Id or Title")
     show_find_book()
 
 
@@ -97,16 +100,17 @@ with tab_country:
         show_books_by_country()
 
 
-# # ==================================================
-# # TAB 4 - SIMILAR
-# # ==================================================
-# with tab_similar:
+# ==================================================
+# TAB 4 - SIMILAR
+# ==================================================
+with tab_similar:
 
-#     st.subheader("🔎 find a similar book by Id")
-#     show_similar_books()
+    st.subheader("🔎 find a similar book by Id")
+    show_similar_books()
 
-# # ==================================================
-# # TAB 5 - CHATBOT
-# # ==================================================
-# with tab_chatbot:
-#     show_chatbot()
+# ==================================================
+# TAB 5 - CHATBOT
+# ==================================================
+with tab_chatbot:
+    st.subheader("💬 Describe the book you're looking for ")
+    show_chatbot()

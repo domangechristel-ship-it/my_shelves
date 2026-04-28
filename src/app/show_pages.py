@@ -294,11 +294,11 @@ def show_books_by_title(title: str) -> list[dict] | None:
         )
 
         if response.status_code == 404:
-            st.warning("No books found for this title.")
+            st.warning("📕 No books found for this title.")
             return None
 
         if response.status_code != 200:
-            st.error("Error while searching books by title.")
+            st.error("⚠️ Error while searching books by title.")
             return None
 
         return response.json()
