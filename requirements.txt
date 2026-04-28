@@ -15,12 +15,14 @@ folium
 streamlit-folium
 transformers
 sentence-transformers
-torchvision
 scikit-learn
 joblib
 numpy
 tensorflow[and-cuda]==2.16.2
 tensorflow-hub
+--extra-index-url https://download.pytorch.org/whl/cpu
 torch
+--extra-index-url https://download.pytorch.org/whl/cpu
+torchvision
 faiss-cpu
 prefect

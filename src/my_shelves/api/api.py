@@ -22,6 +22,7 @@ from my_shelves.utils.bigquery import get_title, get_id_by_emotion, get_id_by_co
 from my_shelves.utils.bigquery import get_id_by_romance_heat_level, get_id_by_character_type, get_id_by_main_themes
 from my_shelves.utils.bigquery import get_id_by_pace, get_id_by_sentiment
 from my_shelves.ml.similarity.main import get_similarity
+from my_shelves.api.vector_search import search_similar_books
 
 app = FastAPI()
 
@@ -169,9 +170,38 @@ def get_similar_book(book_id: str, model_name: str = None) -> list[int]:
         A list of IDs of similar books.
     """
 
-    book_ids = get_similarity(int(book_id), model_name=model_name, n_rows="10k")
+    book_ids = get_similarity(int(book_id), model_name=model_name, n_rows="100k")
     return book_ids
 
+@app.get("/books/chat-books")
+def read_chat_books(query: str, top_k: int = 5):
+    """
+    Return book IDs from Vertex AI Vector Search.
+    """
+    try:
+        results = search_similar_books(query=query, top_k=top_k)
+
+        neighbors = results[0]
+
+        return {
+            "query": query,
+            "top_k": top_k,
+            "book_ids": [neighbor.id for neighbor in neighbors],
+            "results": [
+                {
+                    "book_id": neighbor.id,
+                    "distance": neighbor.distance,
+                }
+                for neighbor in neighbors
+            ],
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error while searching similar books: {str(e)}",
+        ) from e
+        
 @app.get("/books/filter")
 def filter_books(
     emotions: Optional[List[str]] = Query(default=None),
