@@ -38,7 +38,9 @@ def show_similar_books() -> None:
 
     with col2:
         # book_id = get_book_id_from_query_or_input()
-        book_id = st.text_input("Enter book ID:", "1")
+        query_params = st.query_params
+        book_id_from_url = query_params.get("book_id", "1")
+        book_id = st.text_input("Enter book ID:", value=book_id_from_url)
 
 
     if not book_id:
