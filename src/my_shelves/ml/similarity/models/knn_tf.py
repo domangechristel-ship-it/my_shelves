@@ -1,18 +1,25 @@
-"""PYTHONPATH=src python src/my_shelves/ml/similarity/from_llm/copilot/knn_tf.py"""
-import os
+"""
+Neural Autoencoder based Nearest Neighbors implementation using TensorFlow.
+"""
 
+import os
 import pandas as pd
 import joblib
-import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.neighbors import NearestNeighbors
 import tensorflow as tf
 from tensorflow import keras
-from my_shelves.ml.similarity.params import DATASET_ROOT, MODELS_ROOT, N_ROWS_NAMES
+
+from my_shelves.ml.similarity.params import MODELS_ROOT, N_ROWS_NAMES, NUM_COLS, CAT_COLS
+from my_shelves.ml.similarity.models.base_similarity import SimilarityModel
 
 
-class SimilarityKNNTF:
+class BookSimilarityModelTF(SimilarityModel):
+    """
+    Uses a Neural Autoencoder to compress features into embeddings.
+    """
     def __init__(self):
+        super().__init__("knn_tf")
         self.scaler = None
         self.les = {}
         self.encoder_model = None
@@ -22,151 +29,147 @@ class SimilarityKNNTF:
         self.embeddings = None
 
     def train(self, n_rows: str = "10k"):
-        # Load datasets
-        base = pd.read_csv(f"{DATASET_ROOT}/base_ENG_{n_rows}.csv")
-        emotions = pd.read_csv(f"{DATASET_ROOT}/emotions.csv", usecols=["book_id", "emotions", "top_emotion"])
-        locations = pd.read_csv(f"{DATASET_ROOT}/locations.csv", usecols=["book_id", "country", "region"])
+        """Train the neural autoencoder and fit neighbors."""
+        data = self.get_data(n_rows)
+        self.embeddings = self.preprocess(data)
 
-        # Merge on book_id with left joins
-        merged = base.merge(emotions, on="book_id", how="left").merge(locations, on="book_id", how="left")
-        # Fill NaNs: numeric columns with 0, others with "unknown"
-        num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
-        merged[num_cols] = merged[num_cols].fillna(0)
-        merged = merged.fillna("unknown")
-        merged = merged.set_index("book_id")
+        self.model = NearestNeighbors(n_neighbors=10)
+        self.model.fit(self.embeddings)
 
-        self.data = merged.copy()
-        self.book_ids = merged.index.tolist()
-
-        # Define columns
-        cat_cols = ["is_series", "author_names", "top_emotion", "country", "region"]
-
-        # Preprocess
+    def preprocess(self, data: pd.DataFrame):
+        """Build the TF model and extract embeddings."""
+        merged = data.copy()
         self.scaler = StandardScaler()
-        merged[num_cols] = self.scaler.fit_transform(merged[num_cols])
+        merged[NUM_COLS] = self.scaler.fit_transform(merged[NUM_COLS])
 
-        for col in cat_cols:
+        for col in CAT_COLS:
             le = LabelEncoder()
-            merged[col] = le.fit_transform(merged[col].astype(str)) # <-- astype(str) is key
+            # astype(str) is key to handle mixed types
+            merged[col] = le.fit_transform(merged[col].astype(str))
             self.les[col] = le
 
-        # Save the encoded version for inference
         self.encoded_data = merged.copy()
 
-        # Build model
         inputs = {}
         embeddings = []
         vocab_sizes = {}
         emb_dim = 10  # embedding dim for cat
 
-        for col in num_cols:
+        for col in NUM_COLS:
             inputs[col] = keras.Input(shape=(1,), name=col)
             embeddings.append(inputs[col])
 
-        for col in cat_cols:
+        for col in CAT_COLS:
             vocab_sizes[col] = len(self.les[col].classes_)
             inputs[col] = keras.Input(shape=(1,), name=col)
-            emb_layer = keras.layers.Embedding(vocab_sizes[col], emb_dim, name=f'emb_{col}')(inputs[col])
+            emb_layer = keras.layers.Embedding(
+                vocab_sizes[col], emb_dim, name=f'emb_{col}'
+            )(inputs[col])
             emb_flat = keras.layers.Flatten()(emb_layer)
             embeddings.append(emb_flat)
 
         concat = keras.layers.Concatenate()(embeddings)
         encoder = keras.layers.Dense(128, activation='relu')(concat)
         encoder = keras.layers.Dense(64, activation='relu')(encoder)
-        embedding = keras.layers.Dense(32, activation='relu', name='embedding')(encoder)
+        embedding = keras.layers.Dense(
+            32, activation='relu', name='embedding'
+        )(encoder)
 
-        # Decoder for reconstruction (only num for simplicity)
         decoder = keras.layers.Dense(64, activation='relu')(embedding)
         decoder = keras.layers.Dense(128, activation='relu')(decoder)
-        num_outputs = [keras.layers.Dense(1, name=f"output_{col}")(decoder) for col in num_cols]
+        num_outputs = [
+            keras.layers.Dense(1, name=f"output_{col}")(decoder)
+            for col in NUM_COLS
+        ]
 
-        self.full_model = keras.Model(inputs=list(inputs.values()), outputs=num_outputs)
+        self.full_model = keras.Model(
+            inputs=list(inputs.values()), outputs=num_outputs
+        )
         self.full_model.compile(optimizer='adam', loss='mse')
 
-        # Prepare data for training
-        X_train = {col: merged[col].values.reshape(-1, 1) for col in num_cols + cat_cols}
-        y_train = [merged[col].values for col in num_cols]
+        X_train = {
+            col: merged[col].values.reshape(-1, 1)
+            for col in NUM_COLS + CAT_COLS
+        }
+        y_train = [merged[col].values for col in NUM_COLS]
 
-        self.full_model.fit(X_train, y_train, epochs=10, batch_size=32, verbose=1)
+        self.full_model.fit(
+            X_train, y_train, epochs=10, batch_size=32, verbose=1
+        )
 
-        # Create encoder model
-        self.encoder_model = keras.Model(inputs=list(inputs.values()), outputs=embedding)
+        self.encoder_model = keras.Model(
+            inputs=list(inputs.values()), outputs=embedding
+        )
 
-        # Get embeddings for all books
-        self.embeddings = self.encoder_model.predict(X_train)
-
-        # Fit NearestNeighbors on embeddings
-        self.model = NearestNeighbors(n_neighbors=10)
-        self.model.fit(self.embeddings)
+        return self.encoder_model.predict(X_train)
 
     def save(self, n_rows: str = "10k"):
-        self.encoder_model.save(f"{MODELS_ROOT}/knn_tf/knn_tf_encoder_tf_{n_rows}.h5")
-        joblib.dump(self.scaler, f"{MODELS_ROOT}/knn_tf/knn_tf_scaler_{n_rows}.pkl")
+        """Save the TF encoder and neighborhood model."""
+        self.save_common(n_rows)
+        self.save_common_scaler(n_rows, self.scaler)
+        os.makedirs(os.path.join(MODELS_ROOT, "knn_tf"), exist_ok=True)
+        self.encoder_model.save(
+            f"{MODELS_ROOT}/knn_tf/knn_tf_encoder_tf_{n_rows}.h5"
+        )
         joblib.dump(self.les, f"{MODELS_ROOT}/knn_tf/knn_tf_les_{n_rows}.pkl")
-        joblib.dump(self.book_ids, f"{MODELS_ROOT}/knn_tf/knn_tf_book_ids_{n_rows}.pkl")
         joblib.dump(self.model, f"{MODELS_ROOT}/knn_tf/knn_tf_nn_{n_rows}.pkl")
-        joblib.dump(self.data, f"{MODELS_ROOT}/knn_tf/knn_tf_data_tf_{n_rows}.pkl")
-        joblib.dump(self.encoded_data, f"{MODELS_ROOT}/knn_tf/knn_tf_encoded_data_tf_{n_rows}.pkl")  # ADD
+        joblib.dump(
+            self.encoded_data,
+            f"{MODELS_ROOT}/knn_tf/knn_tf_encoded_data_tf_{n_rows}.pkl"
+        )
 
     def load(self, n_rows: str = "10k"):
-        self.encoder_model = keras.models.load_model(f"{MODELS_ROOT}/knn_tf/knn_tf_encoder_tf_{n_rows}.h5")
-        self.scaler = joblib.load(f"{MODELS_ROOT}/knn_tf/knn_tf_scaler_{n_rows}.pkl")
+        """Load the TF encoder and neighborhood model."""
+        self.load_common(n_rows)
+        self.scaler = self.load_common_scaler(n_rows)
+        self.encoder_model = keras.models.load_model(
+            f"{MODELS_ROOT}/knn_tf/knn_tf_encoder_tf_{n_rows}.h5"
+        )
         self.les = joblib.load(f"{MODELS_ROOT}/knn_tf/knn_tf_les_{n_rows}.pkl")
-        self.book_ids = joblib.load(f"{MODELS_ROOT}/knn_tf/knn_tf_book_ids_{n_rows}.pkl")
         self.model = joblib.load(f"{MODELS_ROOT}/knn_tf/knn_tf_nn_{n_rows}.pkl")
-        self.data = joblib.load(f"{MODELS_ROOT}/knn_tf/knn_tf_data_tf_{n_rows}.pkl")
-        self.encoded_data = joblib.load(f"{MODELS_ROOT}/knn_tf/knn_tf_encoded_data_tf_{n_rows}.pkl")  # ADD
+        self.encoded_data = joblib.load(
+            f"{MODELS_ROOT}/knn_tf/knn_tf_encoded_data_tf_{n_rows}.pkl"
+        )
 
     def is_saved(self, n_rows: str = "10k"):
+        """Check for TF model files."""
         required_files = [
             f"{MODELS_ROOT}/knn_tf/knn_tf_encoder_tf_{n_rows}.h5",
-            f"{MODELS_ROOT}/knn_tf/knn_tf_scaler_{n_rows}.pkl",
             f"{MODELS_ROOT}/knn_tf/knn_tf_les_{n_rows}.pkl",
-            f"{MODELS_ROOT}/knn_tf/knn_tf_book_ids_{n_rows}.pkl",
             f"{MODELS_ROOT}/knn_tf/knn_tf_nn_{n_rows}.pkl",
-            f"{MODELS_ROOT}/knn_tf/knn_tf_data_tf_{n_rows}.pkl",
-            f"{MODELS_ROOT}/knn_tf/knn_tf_encoded_data_tf_{n_rows}.pkl",  # ADD
+            f"{MODELS_ROOT}/knn_tf/knn_tf_encoded_data_tf_{n_rows}.pkl",
         ]
-        # models/knn_tf/knn_tf_book_ids_10k.pkl
-        # models/knn_tf/knn_tf_data_tf.pkl_10k
-        # models/knn_tf/knn_tf_encoded_data_tf_10k.pkl
-        # models/knn_tf/knn_tf_encoder_tf_10k.h5
-        # models/knn_tf/knn_tf_les_10k.pkl
-        # models/knn_tf/knn_tf_nn.pkl_10k
-        # models/knn_tf/knn_tf_scaler_10k.pkl
-        return all(os.path.exists(path) for path in required_files)
+        return (
+            self.is_common_saved(n_rows, include_scaler=True) and
+            all(os.path.exists(path) for path in required_files)
+        )
 
-    def train_or_load(self, n_rows: str = "10k"):
-        if self.is_saved(n_rows=n_rows):
-            print(f"Saved knn_tf model with {n_rows} dataset detected, loading from disk.", flush=True)
-            self.load(n_rows=n_rows)
-        else:
-            print(f"No saved knn_tf model with {n_rows} dataset found, training now.", flush=True)
-            self.train(n_rows=n_rows)
-            self.save(n_rows=n_rows)
+    def get_similar(self, book_id, n_neighbors: int = 10):
+        """Retrieve similar books by passing input through the encoder."""
+        cached = self._get_cached_similar(book_id, n_neighbors)
+        if cached is not None:
+            return cached
 
-    def get_similar(self, book_id):
         if book_id not in self.book_ids:
             return []
-        # Get and preprocess the row
-        num_cols = ["n_votes", "read_duration", "average_rating", "num_pages", "ratings_count", "total_shelves_count"]
-        cat_cols = list(self.les.keys())
+        row = self.encoded_data.loc[[book_id]]
 
-        # Use already-encoded + scaled row directly
-        row = self.encoded_data.loc[[book_id]]  # No re-encoding needed
-
-        input_dict = {col: row[col].values.reshape(-1, 1) for col in num_cols + cat_cols}
-        # Get embedding
+        input_dict = {
+            col: row[col].values.reshape(-1, 1)
+            for col in NUM_COLS + CAT_COLS
+        }
         emb = self.encoder_model.predict(input_dict, verbose=0)
-        # Find neighbors
-        distances, indices = self.model.kneighbors(emb)
+        _, indices = self.model.kneighbors(emb, n_neighbors=n_neighbors + 1)
         similar_indices = indices[0]
-        similar_book_ids = [self.book_ids[i] for i in similar_indices]
-        return similar_book_ids
+        similar_book_ids = [
+            self.book_ids[i] for i in similar_indices
+            if self.book_ids[i] != book_id
+        ]
+        return similar_book_ids[:n_neighbors]
 
 
 if __name__ == "__main__":
-    model = SimilarityKNNTF()
+    model = BookSimilarityModelTF()
     for n_rows in N_ROWS_NAMES:
         model.train_or_load(n_rows=n_rows)
     # model.train_or_load(n_rows="10k")

@@ -1,151 +1,76 @@
-
-import datetime
-import tensorflow as tf
-
-from prefect import task, flow
+"""
+Prefect orchestration script for training and caching similarity models.
+"""
+from prefect import flow, task
 from prefect.artifacts import create_table_artifact
 
-from my_shelves.ml.similarity.models.knn_tf import SimilarityKNNTF
-from my_shelves.ml.similarity.models.knn_sk import SimilarityKNNSK
-from my_shelves.ml.similarity.models.sota_torch import SimilaritySotaTorch
-from my_shelves.ml.similarity.models.sota_tf import SimilaritySotaTF
-# from my_shelves.ml.similarity.models.base_similarity import SimilarityModel
-from my_shelves.ml.similarity.params import N_ROWS_NAMES
+from my_shelves.ml.similarity.models.factory import ModelFactory
 
 
-PREFECT_FLOW_NAME="similarity"
-
-
-@task
-def train_knn_tf(n_rows: str = "10k") -> str:
-    start = datetime.datetime.now()
-
-    knn_tf_model = SimilarityKNNTF()
-    knn_tf_model.train_or_load(n_rows=n_rows)
-
-    end = datetime.datetime.now()
-    duration = (end - start).total_seconds() / 60
-
-    table = [
-       {'n_rows': n_rows,
-        'duration': duration
-        }
-    ]
-
-    create_table_artifact(
-        key="train-knn-tf",
-        table=table,
-        description= "# Similarity Model using KNN with ScikitLearn."
-    )
-    return "knn_tf_model training finished."
-
-
-@task
-def train_knn_sk(n_rows: str = "10k") -> str:
-    start = datetime.datetime.now()
-
-    knn_sk_model = SimilarityKNNSK()
-    knn_sk_model.train_or_load(n_rows=n_rows)
-
-    end = datetime.datetime.now()
-    duration = (end - start).total_seconds() / 60
-
-    table = [
-       {'n_rows': n_rows,
-        'duration': duration
-        }
-    ]
-
-    create_table_artifact(
-        key="train-knn-sk",
-        table=table,
-        description= "# Similarity Model using KNN with TensorFlow."
-    )
-
-    return "knn_sk_model training finished."
-
-
-@task
-def train_sota_tf(n_rows: str = "10k") -> str:
-    start = datetime.datetime.now()
-
-    sota_tf_model = SimilaritySotaTF()
-    sota_tf_model.train_or_load(n_rows=n_rows)
-
-    end = datetime.datetime.now()
-    duration = (end - start).total_seconds() / 60
-
-    table = [
-       {'n_rows': n_rows,
-        'duration': duration
-        }
-    ]
-
-    create_table_artifact(
-        key="train-sota-tf",
-        table=table,
-        description= "# Similarity Model using SOTA with TensorFlow."
-    )
-    return "sota_tf_model training finished."
-
-
-@task
-def train_sota_torch(n_rows: str = "10k") -> str:
-    start = datetime.datetime.now()
-
-    sota_torch_model = SimilaritySotaTorch()
-    sota_torch_model.train_or_load(n_rows=n_rows)
-
-    end = datetime.datetime.now()
-    duration = (end - start).total_seconds() / 60
-
-    table = [
-       {'n_rows': n_rows,
-        'duration': duration
-        }
-    ]
-
-    create_table_artifact(
-        key="train-sota-torch",
-        table=table,
-        description= "# Similarity Model using SOTA with PyTorch."
-    )
-    return "sota_torch_model training finished."
-
-
-@task
-def notify(msg: list[str]):
-    for m in msg:
-        print(m)
-
-
-@flow(name=PREFECT_FLOW_NAME)
-def train_flow(n_rows: str = "10k"):
+@task(name="Train Model")
+def train_model_task(model_name: str, n_rows: str):
     """
-    Build the Prefect workflow for the `similarity` models.
+    Prefect task to train or load a specific model.
     """
-    # Enable GPU memory growth
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    if gpus:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-    knn_tf_task = train_knn_tf.submit(n_rows=n_rows)
-    knn_sk_task = train_knn_sk.submit(n_rows=n_rows, wait_for=[knn_tf_task])
-    sota_tf_task = train_sota_tf.submit(n_rows=n_rows, wait_for=[knn_sk_task])
-    sota_torch_task = train_sota_torch.submit(n_rows=n_rows, wait_for=[sota_tf_task])
+    print(f"\n--- Training/Loading Model: {model_name} ---")
+    model = ModelFactory.create_model(model_name)
+    model.train_or_load(n_rows=n_rows)
 
-    knn_tf_result = knn_tf_task.result()
-    knn_sk_result = knn_sk_task.result()
-    sota_tf_result = sota_tf_task.result()
-    sota_torch_result = sota_torch_task.result()
+    create_table_artifact(
+        key=f"trained-model-{model_name.replace("_", "-")}-{n_rows}",
+        table=[
+            {"Model Name": model_name,
+             "Dataset Size": n_rows,
+             "Status": "Trained/Loaded"
+             }
+        ],
+        description=f"Model {model_name} trained/loaded for {n_rows} dataset."
+    )
+    return model_name
 
-    notify_task = notify.submit(msg=[knn_tf_result,
-                                     knn_sk_result,
-                                     sota_tf_result,
-                                     sota_torch_result])
-    notify_task.result()
+
+@task(name="Save Cache")
+def save_cache_task(model_name: str, n_rows: str):
+    """
+    Prefect task to save the similarity cache for a model.
+    """
+    print(f"--- Saving Cache: {model_name} ---")
+    model = ModelFactory.create_model(model_name)
+    # Ensure the model is loaded with its artifacts before caching
+    model.load(n_rows=n_rows)
+    model.save_cache(n_rows=n_rows, batch_size=500)
+    print(f"Cache saved for {model_name}.")
+
+    create_table_artifact(
+        key=f"cache-saved-{model_name.replace("_", "-")}-{n_rows}",
+        table=[
+            {"Model Name": model_name,
+             "Dataset Size": n_rows,
+             "Status": "Cache Saved"
+             }
+        ],
+        description=f"Model {model_name} trained/loaded for {n_rows} dataset."
+    )
+    return model_name
+
+
+@flow(name="Similarity Models Training Flow")
+def training_flow():
+    """
+    Prefect flow that trains and caches all similarity models sequentially
+    for a fixed dataset size of 10k.
+    """
+    n_rows = "10k"
+    model_names = ["knn_sk", "knn_tf", "sota_tf", "sota_torch", "sota_mpnet"]
+
+    print(f"Starting Prefect training flow for dataset size: {n_rows}\n")
+
+    for model_name in model_names:
+        trained_model = train_model_task(model_name, n_rows)
+        save_cache_task(trained_model, n_rows)
+
+    print(f"\n--- Finished all models for {n_rows} dataset size ---")
 
 
 if __name__ == "__main__":
-    n_rows = "10k"
-    train_flow(n_rows=n_rows)
+    training_flow()

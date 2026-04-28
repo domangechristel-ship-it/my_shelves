@@ -21,7 +21,7 @@ from my_shelves.utils.bigquery import get_book, get_country_counts, get_books,ge
 from my_shelves.utils.bigquery import get_title, get_id_by_emotion, get_id_by_content_intensity
 from my_shelves.utils.bigquery import get_id_by_romance_heat_level, get_id_by_character_type, get_id_by_main_themes
 from my_shelves.utils.bigquery import get_id_by_pace, get_id_by_sentiment
-from my_shelves.ml.similarity.main import get_similarity
+from my_shelves.ml.similarity.similarity_query import get_similar_books
 from my_shelves.api.vector_search import search_similar_books
 
 app = FastAPI()
@@ -170,7 +170,7 @@ def get_similar_book(book_id: str, model_name: str = None) -> list[int]:
         A list of IDs of similar books.
     """
 
-    book_ids = get_similarity(int(book_id), model_name=model_name, n_rows="100k")
+    book_ids = get_similar_books(int(book_id), model_name=model_name, n_rows="20k")
     return book_ids
 
 @app.get("/books/chat-books")
