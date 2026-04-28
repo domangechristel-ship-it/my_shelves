@@ -56,9 +56,11 @@ from helpers import (
     normalize_book_data,
     render_book_details,
     is_book_id,
-    get_search_value_from_query_or_input
+    get_search_value_from_query_or_input,
+    get_country_data,
+    get_by_country
 )
-from params import API_URL_BOOKS, API_URL_COUNTRY, API_URL_BOOK_IDS_BY_COUNTRY,API_URL_READ_TITLE
+from params import API_URL_BOOKS, API_URL_READ_TITLE
 
 def show_books_table(response_json: dict | list[dict]) -> None:
     """
@@ -121,12 +123,19 @@ def show_map() -> None:
         • navigate to "Books" page
         • update URL query params
     """
+
+    # --------------------------------------------------
+    # Charge uniqument si tab actif
+    # --------------------------------------------------
+    if "tab_country" not in st.session_state:
+        st.session_state.tab_country_loaded = True
+    else:
+        return
     # --------------------------------------------------
     # Data
     # --------------------------------------------------
-    response = requests.get(API_URL_COUNTRY, timeout=10)
 
-    books_count_country = pd.DataFrame(response.json())
+    books_count_country = pd.DataFrame(get_country_data())
     books_count_country["latlng"] = books_count_country["capital_latlng"].apply(ast.literal_eval)
     books_count_country = books_count_country[["country", "latlng", "count_books"]].copy()
     books_count_country = books_count_country[
@@ -217,7 +226,7 @@ def show_books_by_country() -> None:
     Display the books list page for the currently selected country.
     """
 
-    st.subheader("📚 Books list")
+    # st.subheader("📚 Books list")
 
     if st.button("⬅ Back to map"):
         st.session_state.country_page = "Map"
@@ -235,16 +244,12 @@ def show_books_by_country() -> None:
         st.write(f"Books for **{selected_country}**:")
 
         try:
-            response_ids = requests.get(
-                API_URL_BOOK_IDS_BY_COUNTRY,
-                params={"country": selected_country},
-                timeout=10
-            )
+            response_ids = get_by_country(selected_country)
 
             if response_ids.status_code == 404:
                 st.warning(f"No books found for {selected_country}.")
             elif response_ids.status_code != 200:
-                st.error("Error while retrieving book IDs.")
+                st.error(f"Error while retrieving book IDs{response_ids.status_code}.")
             else:
                 book_ids = response_ids.json()
 
@@ -255,8 +260,8 @@ def show_books_by_country() -> None:
 
                     response_books = requests.get(
                         API_URL_BOOKS,
-                        params=params,
-                        timeout=20
+                        params=params
+                        # ,timeout=20
                     )
 
                     if response_books.status_code == 404:
@@ -289,8 +294,8 @@ def show_books_by_title(title: str) -> list[dict] | None:
     try:
         response = requests.get(
             API_URL_READ_TITLE,
-            params={"title": title},
-            timeout=10,
+            params={"title": title}
+            # ,timeout=10
         )
 
         if response.status_code == 404:

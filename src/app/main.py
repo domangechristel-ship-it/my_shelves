@@ -44,6 +44,8 @@ st.set_page_config(
     page_icon="📚",
     layout="wide")
 
+# if st.button("🔄 Clear cache"):
+#     st.cache_data.clear()
 # --------------------------------------------------
 # Session state
 # --------------------------------------------------

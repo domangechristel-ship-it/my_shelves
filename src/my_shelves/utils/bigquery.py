@@ -37,7 +37,9 @@ def get_book(book_id: int) -> pd.DataFrame:
     full_table_name = "books_dataset.base_reviews_ENG_all"
 
     query = f"""
-        SELECT *
+        SELECT book_id,title,image_url,series,url,num_pages,
+            description,average_rating,
+            publication_year
         FROM {full_table_name}
         WHERE book_id = @book_id
     """
@@ -167,7 +169,9 @@ def get_books(book_id_list: list[int], nbr_rows: int = 10) -> pd.DataFrame:
     full_table_name = "books_dataset.base_reviews_ENG_all"
 
     query = f"""
-        SELECT *
+        SELECT book_id,title,image_url,series,url,num_pages,
+            description,average_rating,
+            publication_year
         FROM `{full_table_name}`
         WHERE book_id IN UNNEST(@book_id_list)
         order by total_shelves_count desc,average_rating desc
