@@ -7,6 +7,13 @@ from dict_features import dict_labels
 
 
 def show_book_by_filters():
+    # --------------------------------------------------
+    # Charge uniqument si tab actif
+    # --------------------------------------------------
+    if "tab_features" not in st.session_state:
+        st.session_state.tab_country_loaded = True
+    else:
+        return
 
     col_filters, col_results = st.columns([1, 2])
 

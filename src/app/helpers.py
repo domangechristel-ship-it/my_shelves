@@ -38,7 +38,13 @@ Notes
 """
 import requests
 import streamlit as st
-from params import  API_URL_BOOK, API_URL_COUNTRY, API_URL_BOOK_IDS_BY_COUNTRY,API_URL_SIMILAR_BOOKS
+from params import  (
+    API_URL_BOOK,
+    API_URL_COUNTRY,
+    API_URL_BOOK_IDS_BY_COUNTRY,
+    API_URL_SIMILAR_BOOKS,
+    API_URL_READ_TITLE
+    )
 
 BOOK_DETAILS_CSS = """
 <style>
@@ -141,11 +147,7 @@ def fetch_book_details(book_id: str) -> dict | None:
         Book JSON if found, otherwise None.
     """
     try:
-        response = requests.get(
-            API_URL_BOOK,
-            params={"book_id": book_id}
-            # ,timeout=30
-        )
+        response = get_book_by_id(book_id)
 
         if response.status_code == 404:
             st.warning("📕Book not found.")
@@ -273,3 +275,21 @@ def get_chat_respons(query,top_k):
                     # ,timeout=30,
                 )
     return response_search
+
+@st.cache_data(ttl=3600)
+def get_books_by_title(title):
+    response = requests.get(
+            API_URL_READ_TITLE,
+            params={"title": title}
+            # ,timeout=10
+        )
+    return response
+
+@st.cache_data(ttl=3600)
+def get_book_by_id(book_id):
+    response = requests.get(
+            API_URL_BOOK,
+            params={"book_id": book_id}
+            # ,timeout=30
+        )
+    return response

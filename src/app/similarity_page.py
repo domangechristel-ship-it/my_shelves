@@ -16,8 +16,15 @@ def show_similar_books() -> None:
     """
     Display the books list page for the currently selected country.
     """
+    # --------------------------------------------------
+    # Charge uniqument si tab actif
+    # --------------------------------------------------
+    if "tab_similar" not in st.session_state:
+        st.session_state.tab_country_loaded = True
+    else:
+        return
 
-    st.subheader("📚 Books list")
+    # st.subheader("📚 Books list")
 
     col1, col2 = st.columns(2)
 
