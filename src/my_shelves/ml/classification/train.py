@@ -128,7 +128,7 @@ def train_pace(X: pd.DataFrame, n_rows: str = "10k"):
     #     return output_csv
 
     pace = ZeroShotClassifier(
-        task='rhythm',
+        task='pace',
         batch_size=32,
         device=0  # GPU si dispo
     )
