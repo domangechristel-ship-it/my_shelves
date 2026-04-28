@@ -201,7 +201,7 @@ def read_chat_books(query: str, top_k: int = 5):
             status_code=500,
             detail=f"Error while searching similar books: {str(e)}",
         ) from e
-        
+
 @app.get("/books/filter")
 def filter_books(
     emotions: Optional[List[str]] = Query(default=None),
@@ -255,19 +255,19 @@ def filter_books(
 
     return list(book_ids) if book_ids else []
 
-# @app.get("/read/title")
-# def search_books_by_title(title: str):
+@app.get("/read/title")
+def search_books_by_title(title: str):
 
-#     df = get_title(title)
+    df = get_title(title)
 
-#     if df.empty:
-#         raise HTTPException(
-#             status_code=404,
-#             detail="No books found for the provided title."
-#         )
+    if df.empty:
+        raise HTTPException(
+            status_code=404,
+            detail="No books found for the provided title."
+        )
 
-#     # Remplacer les NaN par None pour avoir un JSON valide
-#     df = df.where(df.notna(), None)
-#     df = df.astype(object).where(pd.notnull(df), None)
+    # Remplacer les NaN par None pour avoir un JSON valide
+    df = df.where(df.notna(), None)
+    df = df.astype(object).where(pd.notnull(df), None)
 
-#     return df.to_dict(orient="records")
+    return df.to_dict(orient="records")

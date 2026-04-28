@@ -55,8 +55,10 @@ from helpers import (
     fetch_book_details,
     normalize_book_data,
     render_book_details,
+    is_book_id,
+    get_search_value_from_query_or_input
 )
-from params import API_URL_BOOKS, API_URL_COUNTRY, API_URL_BOOK_IDS_BY_COUNTRY
+from params import API_URL_BOOKS, API_URL_COUNTRY, API_URL_BOOK_IDS_BY_COUNTRY,API_URL_READ_TITLE
 
 def show_books_table(response_json: dict | list[dict]) -> None:
     """
@@ -280,3 +282,57 @@ def show_book_details() -> None:
 
     book = normalize_book_data(response_json)
     render_book_details(book)
+
+def show_books_by_title(title: str) -> list[dict] | None:
+    """Fetch books matching a title from the API."""
+
+    try:
+        response = requests.get(
+            API_URL_READ_TITLE,
+            params={"title": title},
+            timeout=10,
+        )
+
+        if response.status_code == 404:
+            st.warning("No books found for this title.")
+            return None
+
+        if response.status_code != 200:
+            st.error("Error while searching books by title.")
+            return None
+
+        return response.json()
+
+    except requests.RequestException as e:
+        st.error(f"API error: {e}")
+        return None
+
+def show_find_book() -> None:
+    """
+    Search a book by ID or by title.
+
+    - If the input is only digits: fetch one book by book_id
+    - Otherwise: search books by title and show a table
+    """
+
+    search_value = get_search_value_from_query_or_input()
+
+    if not search_value:
+        return
+
+    if is_book_id(search_value):
+        response_json = fetch_book_details(search_value)
+
+        if response_json is None:
+            return
+
+        book = normalize_book_data(response_json)
+        render_book_details(book)
+
+    else:
+        response_json = show_books_by_title(search_value)
+
+        if response_json is None:
+            return
+
+        show_books_table(response_json)
