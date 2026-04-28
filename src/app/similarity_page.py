@@ -31,7 +31,7 @@ def show_similar_books() -> None:
     with col1:
         model_name = st.selectbox(
             "Choose a model:",
-            ("knn_tf", "knn_sk", "sota_torch", "sota_tf"),
+            ("knn_tf", "knn_sk", "sota_torch", "sota_tf", "sota_mpnet"),
         )
 
         # st.write("You selected:", model_name)
