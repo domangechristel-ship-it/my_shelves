@@ -1,10 +1,17 @@
 """
 Prefect orchestration script for training and caching similarity models.
 """
+import os
+import pandas as pd
 from prefect import flow, task
 from prefect.artifacts import create_table_artifact
 
 from my_shelves.ml.similarity.models.factory import ModelFactory
+
+from my_shelves.utils import bigquery
+
+from my_shelves.ml.similarity.params import DATASET_ROOT
+from my_shelves.utils.params import GCP_PROJECT
 
 
 @task(name="Train Model")
@@ -53,6 +60,53 @@ def save_cache_task(model_name: str, n_rows: str):
     )
     return model_name
 
+@task
+def upload_to_bigquery(model_name: str, n_rows: str):
+    """
+    Upload the processed base reviews DataFrame for a specific language
+    and number of rows to BigQuery.
+    Parameters    ----------
+    lang : str
+        The language code used to filter the reviews (e.g., 'FRA', 'ENG', 'DUT').
+    Returns
+    -------
+    None
+    """
+    cache_dir = os.path.join(DATASET_ROOT, "similarity")
+    cache_path = os.path.join(
+        cache_dir,
+        f"similarities_{model_name}_{n_rows}.csv"
+    )
+
+    table_name = f"similarities_{model_name}_{n_rows}"
+    status = "Cache Failed"
+    if os.path.exists(cache_path):
+        df = pd.read_csv(cache_path)
+
+        print(f"Uploading {cache_path} to BigQuery table {table_name}...")
+
+        bigquery.upload_dataframe_to_bigquery(df=df,
+                                              project=GCP_PROJECT,
+                                              dataset="books_dataset",
+                                              table=table_name,
+                                              write_mode="WRITE_TRUNCATE",
+                                              chunk_size=50_000)
+        status = "Cache Uploaded"
+
+    create_table_artifact(
+        key=f"cache-saved-{model_name.replace("_", "-")}-{n_rows}",
+        table=[
+            {"Model Name": model_name,
+             "Dataset Size": n_rows,
+             "csv_file": f"similarities_{model_name}_{n_rows}.csv",
+             "BigQuery Table": table_name,
+             "Status": status
+             }
+        ],
+        description=f"Model {model_name} trained/loaded for {n_rows} dataset."
+    )
+    return model_name
+
 
 @flow(name="Similarity Models Training Flow")
 def training_flow():
@@ -60,7 +114,7 @@ def training_flow():
     Prefect flow that trains and caches all similarity models sequentially
     for a fixed dataset size of 10k.
     """
-    n_rows = "10k"
+    n_rows = "20k"
     model_names = ["knn_sk", "knn_tf", "sota_tf", "sota_torch", "sota_mpnet"]
 
     print(f"Starting Prefect training flow for dataset size: {n_rows}\n")
@@ -68,6 +122,8 @@ def training_flow():
     for model_name in model_names:
         trained_model = train_model_task(model_name, n_rows)
         save_cache_task(trained_model, n_rows)
+        upload_to_bigquery(trained_model, n_rows)
+
 
     print(f"\n--- Finished all models for {n_rows} dataset size ---")
 
