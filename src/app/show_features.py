@@ -49,7 +49,7 @@ def show_book_by_filters():
 
 
     with col_results:
-        #st.markdown("### 📚 Results")
+        # st.markdown("### 📚 Results")
 
         apply = st.button("🔍 Apply filters")
 
@@ -76,7 +76,7 @@ def show_book_by_filters():
 
 
                 if not book_ids:
-                    st.warning("No books found with those filters.")
+                    st.warning("📕 No books found with those filters.")
                     return
 
                 # 🔹 récupérer les livres
@@ -89,7 +89,7 @@ def show_book_by_filters():
                 )
 
                 if response_books.status_code != 200:
-                    st.error(f"Books API error: {response_books.status_code}")
+                    st.error(f"⚠️ Books API error: {response_books.status_code}")
                     st.write(response_books.text)
                     return
 
