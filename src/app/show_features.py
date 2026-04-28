@@ -84,7 +84,7 @@ def show_book_by_filters():
 
                 response_books = requests.get(
                     API_URL_BOOKS,
-                    json=book_ids,
+                    params=book_params,
                     timeout=20
                 )
 
