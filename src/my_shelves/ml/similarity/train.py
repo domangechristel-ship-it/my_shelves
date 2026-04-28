@@ -109,12 +109,11 @@ def upload_to_bigquery(model_name: str, n_rows: str):
 
 
 @flow(name="Similarity Models Training Flow")
-def training_flow():
+def training_flow(n_rows: str = "10k"):
     """
     Prefect flow that trains and caches all similarity models sequentially
     for a fixed dataset size of 10k.
     """
-    n_rows = "20k"
     model_names = ["knn_sk", "knn_tf", "sota_tf", "sota_torch", "sota_mpnet"]
 
     print(f"Starting Prefect training flow for dataset size: {n_rows}\n")
@@ -129,4 +128,5 @@ def training_flow():
 
 
 if __name__ == "__main__":
-    training_flow()
+    n_rows = "20k"
+    training_flow(n_rows=n_rows)
