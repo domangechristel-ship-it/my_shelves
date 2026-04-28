@@ -16,7 +16,7 @@ def show_chatbot() -> None:
 
     query = st.text_area(
         " ",
-        placeholder="A fantasy story with dragons and adventure...",
+        placeholder="A book about...",
         key="chatbot_query",
         height=150
     )
