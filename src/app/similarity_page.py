@@ -65,7 +65,7 @@ def show_similar_books() -> None:
                 st.error("Error while retrieving book IDs.")
             else:
                 book_ids = response_ids.json()
-                st.write(book_ids)
+                # st.write(book_ids)
                 if not book_ids:
                     st.warning(f"No books found for {book_id} with model {model_name}.")
                 else:

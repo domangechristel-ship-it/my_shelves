@@ -1,155 +1,147 @@
-"""PYTHONPATH=src python src/my_shelves/ml/similarity/from_llm/copilot/sota_torch.py"""
+"""
+State-of-the-Art Similarity implementation using SentenceTransformers and FAISS.
+"""
 
 import os
-
-import pandas as pd
-import faiss
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from sklearn.preprocessing import StandardScaler
+import logging
 import joblib
 import torch
-from my_shelves.ml.similarity.params import DATASET_ROOT, MODELS_ROOT, N_ROWS_NAMES
+import faiss
+import numpy as np
+import pandas as pd
+from sentence_transformers import SentenceTransformer
+from sklearn.preprocessing import StandardScaler
+
+from my_shelves.ml.similarity.params import MODELS_ROOT, N_ROWS_NAMES, NUM_COLS, CAT_COLS
+from my_shelves.ml.similarity.models.base_similarity import SimilarityModel
 
 
-NUM_COLS = ["n_votes",
-            "read_duration",
-            "average_rating",
-            "num_pages",
-            "ratings_count",
-            "total_shelves_count"
-            ]
-
-CAT_COLS = ["is_series", "author_names"]
-
-CLASSIFICATION_COLS = ['emotions', 'content_intensity',
-       'romance_heat_level', 'character_type', 'main_themes', 'pace',
-       'sentiment']
-
-LOCATION_COLS = ["country", "region"]
-
-CAT_COLS = CAT_COLS + CLASSIFICATION_COLS + LOCATION_COLS
-
-
-class SimilaritySotaTorch:
+class BookSimilaritySOTA(SimilarityModel):
+    """
+    Uses Sentence-BERT (MiniLM) and FAISS for semantic search.
+    """
     def __init__(self):
+        super().__init__("sota_torch")
         self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
-        # Use GPU if available
+
+        if torch.cuda.is_available():
+            logging.info(f"SOTA Torch: PyTorch detected GPU: {torch.cuda.get_device_name(0)}")
         if torch.cuda.is_available():
             self.embedder = self.embedder.to('cuda')
         self.scaler = StandardScaler()
         self.index = None
-        self.book_ids = None
         self.embeddings = None
 
-    def prepare_model(self, n_rows: str = "10k"):
-        # Load datasets
-        self.data = pd.read_csv(f"{DATASET_ROOT}/similarity/extended_ENG_{n_rows}.csv")
-        self.book_ids = self.data.index.tolist()
-
-    def encode(self):
-        # text_cols = ['author_names', 'top_emotion', 'emotions', 'country', 'region']
-        self.data['combined_text'] = self.data[CAT_COLS].astype(str).agg(' '.join, axis=1)
-
-        # Generate text embeddings
-        texts = self.data['combined_text'].tolist()
-        text_embeddings = self.embedder.encode(texts, show_progress_bar=True, batch_size=32)
-
-        # Scale numerical
-        # num_cols = ['n_votes', 'read_duration', 'average_rating', 'num_pages', 'ratings_count', 'total_shelves_count']
-        num_scaled = self.scaler.fit_transform(self.data[NUM_COLS])
-
-        # Binary
-        binary = self._to_binary(self.data['is_series']).reshape(-1, 1)
-
-        # Concatenate embeddings
-        self.embeddings = np.hstack([text_embeddings, num_scaled, binary]).astype(np.float32)
-        return self.embeddings
-
     def train(self,n_rows:str = "10k"):
-        # Load datasets
-        self.prepare_model(n_rows=n_rows)
+        """Train the model and build a FAISS index."""
+        data = self.get_data(n_rows)
+        self.embeddings = self.preprocess(data)
 
-        # Prepare text for embedding
-        self.embeddings = self.encode()
-
-        # Normalize for cosine similarity
-        faiss.normalize_L2(self.embeddings)
-
-        # Build Faiss index with GPU if available
         dim = self.embeddings.shape[1]
-        if faiss.get_num_gpus() > 0:
-            res = faiss.StandardGpuResources()
-            self.index = faiss.GpuIndexFlatIP(res, dim)  # Inner product on GPU
+        self.index = faiss.IndexFlatIP(dim)
+
+        # Step 15.1: Log detection status
+        if hasattr(faiss, 'get_num_gpus') and faiss.get_num_gpus() > 0:
+            logging.info(f"SOTA Torch: FAISS detected {faiss.get_num_gpus()} GPU(s).")
+            if hasattr(faiss, 'StandardGpuResources'):
+                try:
+                    res = faiss.StandardGpuResources()
+                    self.index = faiss.GpuIndexFlatIP(res, dim)
+                    logging.info("SOTA Torch: FAISS index successfully built on GPU.")
+                except Exception:
+                    logging.warning("SOTA Torch: FAISS GPU initialization failed. Using CPU.")
         else:
-            self.index = faiss.IndexFlatIP(dim)  # CPU fallback
+            logging.info("SOTA Torch: FAISS did not detect any GPUs.")
+
         self.index.add(self.embeddings)
 
+    def preprocess(self, data: pd.DataFrame):
+        """Encode text using SentenceTransformers and normalize metadata."""
+        text_cols = [c for c in CAT_COLS if c != "is_series"]
+        data['combined_text'] = data[text_cols].astype(str).agg(' '.join, axis=1)
+
+        texts = data['combined_text'].tolist()
+        text_embeddings = self.embedder.encode(
+            texts, show_progress_bar=True, batch_size=32
+        )
+
+        num_scaled = self.scaler.fit_transform(data[NUM_COLS])
+        binary = self._to_binary(data['is_series']).reshape(-1, 1)
+        embeddings = np.hstack([
+            text_embeddings, num_scaled, binary
+        ]).astype(np.float32)
+
+        faiss.normalize_L2(embeddings)
+        return embeddings
+
     def save(self,n_rows:str = "10k"):
-        faiss.write_index(self.index, f"{MODELS_ROOT}/sota_torch/sota_torch_faiss_{n_rows}.index")
-        np.save(f"{MODELS_ROOT}/sota_torch/sota_torch_embeddings_{n_rows}.npy", self.embeddings)
-        joblib.dump(self.scaler, f"{MODELS_ROOT}/sota_torch/sota_torch_scaler_{n_rows}.pkl")
-        joblib.dump(self.book_ids, f"{MODELS_ROOT}/sota_torch/sota_torch_book_ids_{n_rows}.pkl")
-        joblib.dump(self.data, f"{MODELS_ROOT}/sota_torch/sota_torch_data_{n_rows}.pkl")  # For query preprocessing
+        """Save the FAISS index and scaled embeddings."""
+        self.save_common(n_rows)
+        self.save_common_scaler(n_rows, self.scaler)
+        os.makedirs(os.path.join(MODELS_ROOT, "sota_torch"), exist_ok=True)
+        faiss.write_index(
+            self.index,
+            f"{MODELS_ROOT}/sota_torch/sota_torch_faiss_{n_rows}.index"
+        )
+        np.save(
+            f"{MODELS_ROOT}/sota_torch/sota_torch_embeddings_{n_rows}.npy",
+            self.embeddings
+        )
 
     def load(self,n_rows:str = "10k"):
-        self.index = faiss.read_index(f"{MODELS_ROOT}/sota_torch/sota_torch_faiss_{n_rows}.index")
-        self.embeddings = np.load(f"{MODELS_ROOT}/sota_torch/sota_torch_embeddings_{n_rows}.npy")
-        self.scaler = joblib.load(f"{MODELS_ROOT}/sota_torch/sota_torch_scaler_{n_rows}.pkl")
-        self.book_ids = joblib.load(f"{MODELS_ROOT}/sota_torch/sota_torch_book_ids_{n_rows}.pkl")
-        self.data = joblib.load(f"{MODELS_ROOT}/sota_torch/sota_torch_data_{n_rows}.pkl")
+        """Load the FAISS index and scaled embeddings."""
+        self.load_common(n_rows)
+        self.scaler = self.load_common_scaler(n_rows)
+        self.index = faiss.read_index(
+            f"{MODELS_ROOT}/sota_torch/sota_torch_faiss_{n_rows}.index"
+        )
+        self.embeddings = np.load(
+            f"{MODELS_ROOT}/sota_torch/sota_torch_embeddings_{n_rows}.npy"
+        )
 
     def is_saved(self,n_rows:str = "10k"):
+        """Check for SOTA Torch model files."""
         required_files = [
             f"{MODELS_ROOT}/sota_torch/sota_torch_faiss_{n_rows}.index",
             f"{MODELS_ROOT}/sota_torch/sota_torch_embeddings_{n_rows}.npy",
-            f"{MODELS_ROOT}/sota_torch/sota_torch_scaler_{n_rows}.pkl",
-            f"{MODELS_ROOT}/sota_torch/sota_torch_book_ids_{n_rows}.pkl",
-            f"{MODELS_ROOT}/sota_torch/sota_torch_data_{n_rows}.pkl",
         ]
-        return all(os.path.exists(path) for path in required_files)
+        return (
+            self.is_common_saved(n_rows, include_scaler=True) and
+            all(os.path.exists(path) for path in required_files)
+        )
 
-    def train_or_load(self,n_rows:str = "10k"):
-        if self.is_saved(n_rows=n_rows):
-            print(f"Saved sota_torch model with {n_rows} dataset model detected, loading from disk.", flush=True)
-            self.load(n_rows=n_rows)
-        else:
-            print(f"No saved sota_torch model with {n_rows} dataset model found, training now.", flush=True)
-            self.train(n_rows=n_rows)
-            self.save(n_rows=n_rows)
+    def get_similar(self, book_id, n_neighbors: int = 10):
+        """Find similar books by performing a FAISS vector search."""
+        cached = self._get_cached_similar(book_id, n_neighbors)
+        if cached is not None:
+            return cached
 
-    def _to_binary(self, series):
-        values = series.astype(str).str.strip().str.lower()
-        positive = values.isin({"y", "yes", "true", "1", "t"})
-        return positive.astype(int).values
-
-    def get_similar(self, book_id):
         if book_id not in self.book_ids:
             return []
-        # Get the row
+
         row = self.data.loc[[book_id]]
-        # Prepare text
-        # text_cols = ['author_names', 'top_emotion', 'emotions', 'country', 'region']
-        combined_text = row[CAT_COLS].astype(str).agg(' '.join, axis=1).iloc[0]
-        # Generate text embedding
+        text_cols = [c for c in CAT_COLS if c != "is_series"]
+        combined_text = row[text_cols].astype(str).agg(' '.join, axis=1).iloc[0]
+
         text_emb = self.embedder.encode([combined_text])[0]
-        # Scale numerical
-        # num_cols = ['n_votes', 'read_duration', 'average_rating', 'num_pages', 'ratings_count', 'total_shelves_count']
         num_scaled = self.scaler.transform(row[NUM_COLS])
-        # Binary
         binary = self._to_binary(row['is_series']).reshape(1, -1)
-        # Concatenate
-        query_emb = np.hstack([text_emb, num_scaled.flatten(), binary.flatten()]).reshape(1, -1).astype(np.float32)
-        # Normalize
+
+        query_emb = np.hstack([
+            text_emb, num_scaled.flatten(), binary.flatten()
+        ]).reshape(1, -1).astype(np.float32)
+
         faiss.normalize_L2(query_emb)
-        # Search
-        distances, indices = self.index.search(query_emb, 10)
-        similar_book_ids = [self.book_ids[i] for i in indices[0]]
-        return similar_book_ids
+        _, indices = self.index.search(query_emb, n_neighbors + 1)
+        similar_book_ids = [
+            self.book_ids[i] for i in indices[0]
+            if self.book_ids[i] != book_id
+        ]
+        return similar_book_ids[:n_neighbors]
 
 
 if __name__ == "__main__":
-    model = SimilaritySotaTorch()
+    model = BookSimilaritySOTA()
     for n_rows in N_ROWS_NAMES:
         model.train_or_load(n_rows=n_rows)
     # model.train_or_load(n_rows="10k")
