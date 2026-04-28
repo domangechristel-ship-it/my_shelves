@@ -13,23 +13,22 @@ def show_chatbot() -> None:
     similar books, retrieves the matching book details, and displays them.
     """
 
-    st.title("🤖 Book Search")
-
-    query = st.text_input(
-        "Search for a book",
+    query = st.text_area(
+        " ",
         placeholder="A fantasy story with dragons and adventure...",
         key="chatbot_query",
+        height=150
     )
 
     top_k = st.slider(
-        "Number of results",
+        "Number of books",
         min_value=1,
         max_value=20,
-        value=5,
+        value=3,
         key="chatbot_top_k",
     )
 
-    if st.button("Search", key="chatbot_search_button"):
+    if st.button("🔎 Search", key="chatbot_search_button"):
         if not query.strip():
             st.warning("Please enter a search query.")
             return

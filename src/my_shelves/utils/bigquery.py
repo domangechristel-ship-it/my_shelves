@@ -297,9 +297,13 @@ def get_id_by_emotion(emotion: str) -> list[int]:
     client = bigquery.Client()
 
     query = """
-        SELECT *
-        FROM `books_dataset.merged_features`
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
         WHERE LOWER(emotions) LIKE LOWER(CONCAT('%', @emotions, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
         LIMIT 10
     """
 
@@ -318,9 +322,13 @@ def get_id_by_content_intensity(content_intensity: str) -> list[int]:
     client = bigquery.Client()
 
     query = """
-        SELECT *
-        FROM `books_dataset.merged_features`
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
         WHERE LOWER(content_intensity) LIKE LOWER(CONCAT('%', @content_intensity, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
         LIMIT 10
     """
 
@@ -334,15 +342,18 @@ def get_id_by_content_intensity(content_intensity: str) -> list[int]:
 
     return df["book_id"].dropna().astype(int).tolist()
 
-
 def get_id_by_romance_heat_level(romance_heat_level: str) -> list[int]:
 
     client = bigquery.Client()
 
     query = """
-        SELECT *
-        FROM `books_dataset.merged_features`
-        WHERE LOWER(romance_heat_level) LIKE LOWER(CONCAT('%', @romance_heat_level, '%'))
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+        on m.book_id = b.book_id
+        WHERE LOWER(m.romance_heat_level) LIKE LOWER(CONCAT('%', @romance_heat_level, '%'))
+        and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
         LIMIT 10
     """
 
@@ -356,15 +367,18 @@ def get_id_by_romance_heat_level(romance_heat_level: str) -> list[int]:
 
     return df["book_id"].dropna().astype(int).tolist()
 
-
 def get_id_by_character_type(character_type: str) -> list[int]:
 
     client = bigquery.Client()
 
     query = """
-        SELECT *
-        FROM `books_dataset.merged_features`
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
         WHERE LOWER(character_type) LIKE LOWER(CONCAT('%', @character_type, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
         LIMIT 10
     """
 
@@ -383,9 +397,13 @@ def get_id_by_main_themes(main_themes: str) -> list[int]:
     client = bigquery.Client()
 
     query = """
-        SELECT *
-        FROM `books_dataset.merged_features`
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
         WHERE LOWER(main_themes) LIKE LOWER(CONCAT('%', @main_themes, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
         LIMIT 10
     """
 
@@ -404,9 +422,13 @@ def get_id_by_pace(pace: str) -> list[int]:
     client = bigquery.Client()
 
     query = """
-        SELECT *
-        FROM `books_dataset.merged_features`
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
         WHERE LOWER(pace) LIKE LOWER(CONCAT('%', @pace, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
         LIMIT 10
     """
 
@@ -425,9 +447,13 @@ def get_id_by_sentiment(sentiment: str) -> list[int]:
     client = bigquery.Client()
 
     query = """
-        SELECT *
-        FROM `books_dataset.merged_features`
+        SELECT m.book_id
+        FROM `books_dataset.merged_features` m
+        INNER JOIN `books_dataset.base_reviews_ENG_all` b
+            on m.book_id = b.book_id
         WHERE LOWER(sentiment) LIKE LOWER(CONCAT('%', @sentiment, '%'))
+            and b.image_url <>'https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png'
+        order by b.total_shelves_count,b.ratings_count
         LIMIT 10
     """
 
