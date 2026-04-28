@@ -2,7 +2,8 @@ import requests
 import streamlit as st
 
 from show_pages import show_books_table
-from params import API_URL_BOOKS,API_URL_SIMILAR_BOOKS
+from params import API_URL_BOOKS
+from helpers import get_chat_respons
 
 
 def show_chatbot() -> None:
@@ -35,14 +36,7 @@ def show_chatbot() -> None:
 
         try:
             with st.spinner("Searching similar books..."):
-                response_search = requests.get(
-                    API_URL_SIMILAR_BOOKS,
-                    params={
-                        "query": query,
-                        "top_k": top_k,
-                    },
-                    timeout=30,
-                )
+                response_search = get_chat_respons(query,top_k)
 
             if response_search.status_code != 200:
                 st.error("Error while searching similar books.")
@@ -60,15 +54,15 @@ def show_chatbot() -> None:
             with st.spinner("Retrieving book details..."):
                 response_books = requests.get(
                     API_URL_BOOKS,
-                    params=params,
-                    timeout=20,
+                    params=params
+                    # ,timeout=20
                 )
 
             if response_books.status_code == 200:
                 st.subheader("Results")
                 show_books_table(response_books.json())
             else:
-                st.error("Error while retrieving books.")
-
+                st.error(f"Error while retrieving books.{response_books.status_code}")
+                st.warning(params)
         except requests.exceptions.RequestException as exc:
             st.error(f"API request failed: {exc}")

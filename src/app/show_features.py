@@ -3,7 +3,7 @@ import streamlit as st
 
 from params import API_URL_BOOKS, API_URL_BOOK_IDS_FILTERS
 from show_pages import show_books_table
-from my_shelves.ml.classification.dict_features import dict_labels
+from dict_features import dict_labels
 
 
 def show_book_by_filters():
@@ -63,7 +63,7 @@ def show_book_by_filters():
                     API_URL_BOOK_IDS_FILTERS,
                     params=params,
                     headers={"accept": "application/json"},
-                    timeout=10
+                    timeout=20
                 )
 
 
