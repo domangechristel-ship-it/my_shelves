@@ -231,9 +231,9 @@ def show_books_by_country() -> None:
         with loader:
             book_spinner("Retrieving book details...")
 
-        response_books = requests.get(
+        response_books = requests.post(
             API_URL_BOOKS,
-            params=params
+            json={"book_id_list": book_ids}
         )
 
         # 👉 remove loader

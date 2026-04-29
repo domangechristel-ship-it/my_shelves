@@ -23,6 +23,11 @@ from my_shelves.utils.bigquery import get_id_by_romance_heat_level, get_id_by_ch
 from my_shelves.utils.bigquery import get_id_by_pace, get_id_by_sentiment
 from my_shelves.ml.similarity.similarity_query import get_similar_books
 from my_shelves.api.vector_search import search_similar_books
+from pydantic import BaseModel
+
+class BooksRequest(BaseModel):
+    book_id_list: List[int]
+    nbr_rows: Optional[int] = 10
 
 app = FastAPI()
 
@@ -100,27 +105,12 @@ def read_country_counts():
 
     return country_count.to_dict(orient="records")
 
-@app.get("/books")
-def read_books(
-    book_id_list: list[int] = Query(...),
-    nbr_rows: int | None = Query(10)
-):
-    """
-    Retrieve books from BigQuery based on a list of book IDs.
-
-    Parameters
-    ----------
-    book_id_list : list[int]
-        list of book IDs to retrieve.
-    nbr_rows : int | None, optional
-        Maximum number of rows to return. If None, all matching rows are returned.
-
-    Returns
-    -------
-    list[dict]
-        List of books as dictionaries.
-    """
-    df = get_books(book_id_list=book_id_list, nbr_rows=nbr_rows)
+@app.post("/books")
+def read_books(request: BooksRequest):
+    df = get_books(
+        book_id_list=request.book_id_list,
+        nbr_rows=request.nbr_rows
+    )
 
     if df.empty:
         raise HTTPException(
@@ -128,7 +118,6 @@ def read_books(
             detail="No books found for the provided book_id_list."
         )
 
-    # Remplacer les NaN par None pour avoir un JSON valide
     df = df.where(df.notna(), None)
     df = df.astype(object).where(pd.notnull(df), None)
 

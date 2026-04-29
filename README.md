@@ -7,7 +7,7 @@
 Proposer une expérience de découverte de livres plus intelligente et immersive, basée sur :
 - les émotions ressenties
 - le rythme du livre
-- le contexte historique et géographique
+- le contexte géographique
 - le contenu des reviews utilisateurs
 
 ## 🧠 Concept
@@ -16,7 +16,6 @@ Contrairement aux systèmes classiques, **My Shelves** analyse :
 - 📖 les descriptions de livres
 - 💬 les reviews utilisateurs
 - 🌍 les lieux où se déroulent les histoires
-- ⏳ les périodes historiques
 
 pour offrir des recommandations plus riches et personnalisées.
 
@@ -24,9 +23,6 @@ pour offrir des recommandations plus riches et personnalisées.
 
 - 🗺️ **Carte interactive**
   Explorer les livres par pays ou région
-
-- 📅 **Timeline des histoires**
-  Naviguer dans les livres selon leur période
 
 - 😊 **Recherche par émotions & critères**
   Trouver un livre selon l’humeur, le rythme, le nombre de pages…
