@@ -166,17 +166,31 @@ def get_books(book_id_list: list[int], nbr_rows: int = 10) -> pd.DataFrame:
 
     client = bigquery.Client()
 
-    full_table_name = "books_dataset.base_reviews_ENG_all"
+    # full_table_name = "books_dataset.base_reviews_ENG_all"
 
     query = f"""
-        SELECT book_id,title,image_url,series,url,num_pages,
-            description,average_rating,
-            publication_year
-        FROM `{full_table_name}`
-        WHERE book_id IN UNNEST(@book_id_list)
-        order by total_shelves_count desc,average_rating desc
+        SELECT * FROM (
+            SELECT book_id,title,image_url,series,url,num_pages,
+                        description,average_rating,
+                        publication_year,total_shelves_count,
+                    ROW_NUMBER() OVER (
+                                PARTITION BY
+                                IF(similar_books = '[]', CAST(book_id AS STRING), similar_books)
+                                ORDER BY
+                                    total_shelves_count DESC,
+                                    image_url ASC
+                            ) AS rn
+                    FROM `books_dataset.base_reviews_ENG_all`
+                    WHERE book_id IN UNNEST(@book_id_list))
+                    WHERE rn = 1
+                    order by total_shelves_count desc,image_url ASC,average_rating desc
     """
-
+        # SELECT book_id,title,image_url,series,url,num_pages,
+        #     description,average_rating,
+        #     publication_year
+        # FROM `books_dataset.base_reviews_ENG_all`
+        # WHERE book_id IN UNNEST(@book_id_list)
+        # order by total_shelves_count desc,average_rating desc
     if nbr_rows is not None:
         query += f"\nLIMIT {nbr_rows}"
 

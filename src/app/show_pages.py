@@ -59,7 +59,8 @@ from helpers import (
     get_search_value_from_query_or_input,
     get_country_data,
     get_by_country,
-    get_books_by_title
+    get_books_by_title,
+    book_spinner
 )
 from params import API_URL_BOOKS, API_URL_READ_TITLE
 
@@ -80,29 +81,41 @@ def show_books_table(response_json: dict | list[dict]) -> None:
 
     # Keep only needed columns
     df = df[["image_url", "book_id", "title", "average_rating"]]
-
-    # Header
-    col1, col2, col3, col4 = st.columns([1, 1, 4, 1])
-    col1.markdown("**Cover**")
-    col2.markdown("**Book ID**")
-    col3.markdown("**Title**")
-    col4.markdown("**Rating**")
-
-    st.markdown("---")
+    st.markdown(
+        """
+        <div style="
+            display: grid;
+            grid-template-columns: 1fr 1fr 4fr 1fr;
+            align-items: center;
+            padding: 12px 18px;
+            border-radius: 14px;
+            background: #f8fafc;
+            border: 1px solid #dbeafe;
+            margin-bottom: 12px;
+            color: #1e3a8a;
+            font-weight: 700;
+            font-size: 15px;
+        ">
+            <div>📖 Cover</div>
+            <div>🆔 Book ID</div>
+            <div>📘 Title</div>
+            <div>⭐ Rating</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Rows
     for _, row in df.iterrows():
         col1, col2, col3, col4 = st.columns([1, 1, 4, 1])
 
         book_id = row["book_id"]
-
-        # 🔗 clickable image → updates URL
         link = f"?book_id={book_id}"
 
         col1.markdown(
             f"""
             <a href="{link}">
-                <img src="{row['image_url']}" style="height:100px;border-radius:5px;">
+                <img src="{row['image_url']}" style="height:90px;border-radius:6px;">
             </a>
             """,
             unsafe_allow_html=True
@@ -110,7 +123,13 @@ def show_books_table(response_json: dict | list[dict]) -> None:
 
         col2.write(book_id)
         col3.write(row["title"])
-        col4.write(row["average_rating"])
+        col4.write(f"⭐ {row['average_rating']}")
+
+        # 👉 subtle line between rows
+        st.markdown(
+            "<hr style='margin:10px 0; border: none; border-top: 1px solid #dbeafe;'>",
+            unsafe_allow_html=True
+        )
 
 def show_map() -> None:
     """
@@ -227,8 +246,6 @@ def show_books_by_country() -> None:
     Display the books list page for the currently selected country.
     """
 
-    # st.subheader("📚 Books list")
-
     if st.button("⬅ Back to map"):
         st.session_state.country_page = "Map"
         st.session_state.selected_country = None
@@ -240,41 +257,63 @@ def show_books_by_country() -> None:
 
     if selected_country is None:
         st.warning("No country selected yet. Go to the map and click on a marker.")
+        return
 
-    else:
-        st.write(f"Books for **{selected_country}**:")
+    st.write(f"Books for **{selected_country}**:")
 
-        try:
-            response_ids = get_by_country(selected_country)
+    loader = st.empty()
 
-            if response_ids.status_code == 404:
-                st.warning(f"No books found for {selected_country}.")
-            elif response_ids.status_code != 200:
-                st.error(f"Error while retrieving book IDs{response_ids.status_code}.")
-            else:
-                book_ids = response_ids.json()
+    try:
+        # ---------------------------
+        # STEP 1: Get book IDs
+        # ---------------------------
+        with loader:
+            book_spinner("Finding books for this country...")
 
-                if not book_ids:
-                    st.warning(f"No books found for {selected_country}.")
-                else:
-                    params = [("book_id_list", book_id) for book_id in book_ids]
+        response_ids = get_by_country(selected_country)
 
-                    response_books = requests.get(
-                        API_URL_BOOKS,
-                        params=params
-                        # ,timeout=20
-                    )
+        if response_ids.status_code == 404:
+            loader.empty()
+            st.warning(f"No books found for {selected_country}.")
+            return
+        elif response_ids.status_code != 200:
+            loader.empty()
+            st.error(f"Error while retrieving book IDs {response_ids.status_code}.")
+            return
 
-                    if response_books.status_code == 404:
-                        st.warning(f"No books details found for {selected_country}.")
-                    elif response_books.status_code != 200:
-                        st.error("Error while retrieving books details.")
-                    else:
-                        response_books_json = response_books.json()
-                        show_books_table(response_books_json)
+        book_ids = response_ids.json()
 
-        except requests.RequestException as exc:
-            st.error(f"Request error: {exc}")
+        if not book_ids:
+            loader.empty()
+            st.warning(f"No books found for {selected_country}.")
+            return
+
+        params = [("book_id_list", book_id) for book_id in book_ids]
+
+        # ---------------------------
+        # STEP 2: Get book details
+        # ---------------------------
+        with loader:
+            book_spinner("Retrieving book details...")
+
+        response_books = requests.get(
+            API_URL_BOOKS,
+            params=params
+        )
+
+        # 👉 remove loader
+        loader.empty()
+
+        if response_books.status_code == 404:
+            st.warning(f"No books details found for {selected_country}.")
+        elif response_books.status_code != 200:
+            st.error("Error while retrieving books details.")
+        else:
+            show_books_table(response_books.json())
+
+    except requests.RequestException as exc:
+        loader.empty()
+        st.error(f"Request error: {exc}")
 
 def show_book_details() -> None:
     """Get a book id, fetch data from the API, and display the result."""
@@ -322,19 +361,36 @@ def show_find_book() -> None:
     if not search_value:
         return
 
-    if is_book_id(search_value):
-        response_json = fetch_book_details(search_value)
+    loader = st.empty()
 
-        if response_json is None:
-            return
+    try:
+        if is_book_id(search_value):
+            with loader:
+                book_spinner("Retrieving book details...")
 
-        book = normalize_book_data(response_json)
-        render_book_details(book)
+            response_json = fetch_book_details(search_value)
 
-    else:
-        response_json = show_books_by_title(search_value)
+            loader.empty()
 
-        if response_json is None:
-            return
+            if response_json is None:
+                return
 
-        show_books_table(response_json)
+            book = normalize_book_data(response_json)
+            render_book_details(book)
+
+        else:
+            with loader:
+                book_spinner("Searching books by title...")
+
+            response_json = show_books_by_title(search_value)
+
+            loader.empty()
+
+            if response_json is None:
+                return
+
+            show_books_table(response_json)
+
+    except Exception as exc:
+        loader.empty()
+        st.error(f"Error while searching book: {exc}")

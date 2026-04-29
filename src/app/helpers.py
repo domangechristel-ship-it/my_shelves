@@ -293,3 +293,61 @@ def get_book_by_id(book_id):
             # ,timeout=30
         )
     return response
+
+def book_spinner(text="Loading books..."):
+    st.markdown(
+        f"""
+        <div style="display:flex; align-items:center; gap:15px; margin:20px 0;">
+            <div class="book-loader">
+                <div class="book-page page1"></div>
+                <div class="book-page page2"></div>
+                <div class="book-page page3"></div>
+            </div>
+            <div style="font-weight:600; color:#2563eb;">{text}</div>
+        </div>
+
+        <style>
+        .book-loader {{
+            position: relative;
+            width: 45px;
+            height: 35px;
+            border: 3px solid #2563eb;
+            border-radius: 4px;
+            perspective: 100px;
+            background: white;
+        }}
+
+        .book-loader::before {{
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 0;
+            height: 100%;
+            border-left: 2px solid #dbeafe;
+        }}
+
+        .book-page {{
+            position: absolute;
+            width: 20px;
+            height: 29px;
+            top: 3px;
+            left: 22px;
+            background: #dbeafe;
+            border-radius: 2px;
+            transform-origin: left center;
+            animation: flipPage 1.2s infinite ease-in-out;
+        }}
+
+        .page1 {{ animation-delay: 0s; }}
+        .page2 {{ animation-delay: 0.2s; }}
+        .page3 {{ animation-delay: 0.4s; }}
+
+        @keyframes flipPage {{
+            0% {{ transform: rotateY(0deg); opacity: 1; }}
+            50% {{ transform: rotateY(-160deg); opacity: 0.6; }}
+            100% {{ transform: rotateY(-180deg); opacity: 0; }}
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
