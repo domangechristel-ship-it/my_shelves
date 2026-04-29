@@ -84,6 +84,7 @@ def show_similar_books() -> None:
         elif response_ids.status_code != 200:
             loader.empty()
             st.error("Error while retrieving book IDs.")
+
             return
 
         book_ids = response_ids.json()
