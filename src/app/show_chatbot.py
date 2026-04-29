@@ -25,7 +25,7 @@ def show_chatbot() -> None:
         "Number of books",
         min_value=1,
         max_value=20,
-        value=3,
+        value=5,
         key="chatbot_top_k",
     )
 
