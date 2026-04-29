@@ -145,21 +145,6 @@ if "selected_country" not in st.session_state:
 # --------------------------------------------------
 # Header
 # --------------------------------------------------
-# st.markdown(
-#     """
-#     <div class="hero-box">
-#         <div class="main-title">📚 Book Shelves</div>
-#     </div>
-#     """,
-#     unsafe_allow_html=True,
-# )
-# background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-# background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
-# background: linear-gradient(135deg, #1f2937 0%, #4b5563 100%);
-# background: linear-gradient(135deg, #a5b4fc 0%, #c084fc 100%);
-# background: linear-gradient(135deg, #4c1d95 0%, #2563eb 100%); 1
-# background: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
-# background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
 st.markdown(
     """
     <div style="
