@@ -2,9 +2,8 @@ import requests
 import streamlit as st
 
 from params import API_URL_BOOKS, API_URL_BOOK_IDS_FILTERS
-from show_pages import show_books_table
 from dict_features import dict_labels
-from helpers import book_spinner
+from helpers import book_spinner,show_books_table
 
 
 def show_book_by_filters():

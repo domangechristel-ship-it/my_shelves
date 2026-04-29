@@ -1,9 +1,8 @@
 import requests
 import streamlit as st
 
-from show_pages import show_books_table
 from params import API_URL_BOOKS
-from helpers import get_chat_respons,book_spinner
+from helpers import get_chat_respons,book_spinner,show_books_table
 
 
 def show_chatbot() -> None:

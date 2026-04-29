@@ -35,11 +35,10 @@ Requirements
 import streamlit as st
 from show_pages import show_find_book, show_map, show_books_by_country
 from show_features import show_book_by_filters
-from similarity_page import show_similar_books
 from show_chatbot import show_chatbot
 
 st.set_page_config(
-    page_title="Book Shelves",
+    page_title="My Shelves",
     page_icon="📚",
     layout="wide",
 )
@@ -169,12 +168,11 @@ st.markdown(
 # --------------------------------------------------
 # Tabs
 # --------------------------------------------------
-tab_find_book, tab_country, tab_features, tab_similar, tab_chatbot = st.tabs(
+tab_find_book, tab_country, tab_features, tab_chatbot = st.tabs(
     [
         "🔎 Find book",
         "🌍 Country",
         "🎛️ Features",
-        "📚 Similar books",
         "💬 Chatbot",
     ]
 )
@@ -209,10 +207,10 @@ with tab_features:
 # --------------------------------------------------
 # TAB 4 - SIMILAR BOOKS
 # --------------------------------------------------
-with tab_similar:
-    st.markdown('<div class="section-title">📚 Similar books</div>', unsafe_allow_html=True)
+# with tab_similar:
+#     st.markdown('<div class="section-title">📚 Similar books</div>', unsafe_allow_html=True)
 
-    show_similar_books()
+    # show_similar_books()
 
 # --------------------------------------------------
 # TAB 5 - CHATBOT

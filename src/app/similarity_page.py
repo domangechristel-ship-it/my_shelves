@@ -6,8 +6,7 @@ import requests
 import streamlit as st
 
 from params import API_URL_BOOKS, API_URL_BOOK_IDS_SIMILAR,API_URL_BOOK
-from show_pages import show_books_table
-from helpers import book_spinner
+from helpers import book_spinner, show_books_table
 # from helpers import (
 #     get_book_id_from_query_or_input,
 # )
