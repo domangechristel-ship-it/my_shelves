@@ -237,8 +237,8 @@ def render_book_details(book: dict) -> None:
         with m3:
             render_metric_box("📅 Year", str(book["publication_year"]))
 
-        if book["series"]:
-            st.markdown(f'**Series**: {book["series"]}')
+        # if book["series"]:
+        #     st.markdown(f'**Series**: {book["series"]}')
 
         if book["goodreads_url"]:
             st.link_button("🔗 Open on Goodreads", book["goodreads_url"])

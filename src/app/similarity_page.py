@@ -19,16 +19,20 @@ def show_similar_books() -> None:
 
     col1, col2 = st.columns(2)
 
-    with col1:
-        model_name = st.selectbox(
-            "Choose a model:",
-            ("knn_tf", "knn_sk", "sota_torch", "sota_tf", "sota_mpnet"),
-        )
+    # with col1:
+    #     model_name = st.selectbox(
+    #         "Choose a model:",
+    #         ("knn_tf", "knn_sk", "sota_torch", "sota_tf", "sota_mpnet"),
+    #     )
+    model_name = "knn_tf"
 
-    with col2:
-        query_params = st.query_params
-        book_id_from_url = query_params.get("book_id", "1")
-        book_id = st.text_input("Enter book ID:", value=book_id_from_url)
+    # with col2:
+    #     query_params = st.query_params
+    #     book_id_from_url = query_params.get("book_id", "1")
+    #     book_id = st.text_input("Enter book ID:", value=book_id_from_url)
+
+    query_params = st.query_params
+    book_id = query_params.get("book_id", "1")
 
     if not book_id:
         return
