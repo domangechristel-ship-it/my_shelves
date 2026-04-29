@@ -168,17 +168,17 @@ st.markdown(
 # --------------------------------------------------
 # Tabs
 # --------------------------------------------------
-tab_find_book, tab_country, tab_features, tab_chatbot = st.tabs(
+tab_find_book, tab_features, tab_country, tab_chatbot = st.tabs(
     [
         "🔎 Find book",
-        "🌍 Country",
         "🎛️ Features",
+        "🌍 Country",
         "💬 Chatbot",
     ]
 )
 
 # --------------------------------------------------
-# TAB 1 - FIND BOOK
+# TAB - FIND BOOK
 # --------------------------------------------------
 with tab_find_book:
     st.markdown('<div class="section-title">🔎 Find a book</div>', unsafe_allow_html=True)
@@ -186,7 +186,7 @@ with tab_find_book:
     show_find_book()
 
 # --------------------------------------------------
-# TAB 2 - COUNTRY
+# TAB - COUNTRY
 # --------------------------------------------------
 with tab_country:
     st.markdown('<div class="section-title">🌍 Explore books by country</div>', unsafe_allow_html=True)
@@ -197,7 +197,7 @@ with tab_country:
         show_books_by_country()
 
 # --------------------------------------------------
-# TAB 3 - FEATURES
+# TAB - FEATURES
 # --------------------------------------------------
 with tab_features:
     st.markdown('<div class="section-title">🎛️ Filter books by features</div>', unsafe_allow_html=True)
@@ -213,7 +213,7 @@ with tab_features:
     # show_similar_books()
 
 # --------------------------------------------------
-# TAB 5 - CHATBOT
+# TAB - CHATBOT
 # --------------------------------------------------
 with tab_chatbot:
     st.markdown('<div class="section-title">💬 Describe the book you are looking for</div>', unsafe_allow_html=True)
