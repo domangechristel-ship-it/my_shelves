@@ -4,6 +4,7 @@ import streamlit as st
 from params import API_URL_BOOKS, API_URL_BOOK_IDS_FILTERS
 from show_pages import show_books_table
 from dict_features import dict_labels
+from helpers import book_spinner
 
 
 def show_book_by_filters():
@@ -37,63 +38,115 @@ def show_book_by_filters():
                 if selected:
                     params[feature] = selected
 
-        emotions = st.multiselect(
-            "Emotions",
-            ["fear", "joy", "neutral", "disgust", "sadness", "surprise", "anger"]
-        )
+        # ------------------
+        # Emoji mapping
+        # ------------------
+
+        emotion_map = {
+            "fear": "😨 ",
+            "joy": "😊 ",
+            "neutral": "😐 ",
+            "disgust": "🤢 ",
+            "sadness": "😢 ",
+            "surprise": "😲 ",
+            "anger": "😡 ",
+        }
+
+        # Init session state
+        if "selected_emotions" not in st.session_state:
+            st.session_state.selected_emotions = []
+
+        st.write("Emotions")
+
+        cols = st.columns(len(emotion_map))
+
+        for i, (emotion, emoji) in enumerate(emotion_map.items()):
+            is_selected = emotion in st.session_state.selected_emotions
+
+            if cols[i].button(
+                emoji,
+                key=emotion,
+                help=emotion,
+                type="primary" if is_selected else "secondary"
+            ):
+                if is_selected:
+                    st.session_state.selected_emotions.remove(emotion)
+                else:
+                    st.session_state.selected_emotions.append(emotion)
+
+        # Use result
+        emotions = st.session_state.selected_emotions
+
         if emotions:
             params["emotions"] = emotions
 
-        sentiment = st.selectbox(
-            "Sentiment",
-            ["", "positive", "neutral", "negative"]
-        )
-        if sentiment:
-            params["sentiment"] = sentiment
+        # ------------------
+        # Sentiment slider
+        # ------------------
+        sentiment_options = {
+            " ": None,
+            "➖ Negative": "negative",
+            "0️⃣ Neutral": "neutral",
+            "➕ Positive": "positive",
+        }
 
-        #st.write(params)
+        selected_label = st.selectbox(
+            "Sentiment",
+            options=list(sentiment_options.keys()),
+            index=0
+        )
+
+        sentiment = sentiment_options[selected_label]
+
+        if sentiment is not None:
+            params["sentiment"] = sentiment
 
 
 
     with col_results:
-        # st.markdown("### 📚 Results")
-
         apply = st.button("🔍 Apply filters")
 
         if apply:
-
-            # st.write("### Active filters")
-            # st.json(params)
+            loader = st.empty()
 
             try:
+                # STEP 1: get matching book IDs
+                with loader:
+                    book_spinner("Finding matching books...")
+
                 response_ids = requests.get(
                     API_URL_BOOK_IDS_FILTERS,
                     params=params,
                     headers={"accept": "application/json"},
                     timeout=20
                 )
-                # st.warning(response_ids.text)
 
                 if response_ids.status_code != 200:
+                    loader.empty()
                     st.error(f"API error: {response_ids.status_code}")
                     st.write(response_ids.text)
                     return
 
                 book_ids = response_ids.json()
 
-
                 if not book_ids:
+                    loader.empty()
                     st.warning("📕 No books found with those filters.")
                     return
 
-                # 🔹 récupérer les livres
+                # STEP 2: get book details
                 book_params = [("book_id_list", bid) for bid in book_ids]
+
+                with loader:
+                    book_spinner("Retrieving book details...")
 
                 response_books = requests.get(
                     API_URL_BOOKS,
                     params=book_params,
                     timeout=20
                 )
+
+                loader.empty()
 
                 if response_books.status_code != 200:
                     st.error(f"⚠️ Books API error: {response_books.status_code}")
@@ -103,4 +156,5 @@ def show_book_by_filters():
                 show_books_table(response_books.json())
 
             except requests.RequestException as exc:
+                loader.empty()
                 st.error(f"Request error: {exc}")
