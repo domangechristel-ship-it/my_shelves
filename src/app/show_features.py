@@ -18,29 +18,10 @@ def show_book_by_filters():
     col_filters, col_results = st.columns([1, 2])
 
     with col_filters:
-        # st.markdown("### 🎛️ Filters")
-
-        params = {}
-
-        for feature, config in dict_labels.items():
-
-            labels = config["labels"]
-            is_multi = config["multi_label"]
-            display_name = feature.replace("_", " ").capitalize()
-
-            if is_multi:
-                selected = st.multiselect(display_name, labels)
-                if selected:
-                    params[feature] = selected
-            else:
-                selected = st.selectbox(display_name, [""] + labels)
-                if selected:
-                    params[feature] = selected
 
         # ------------------
-        # Emoji mapping
+        # Emoji mapping (hors formulaire)
         # ------------------
-
         emotion_map = {
             "fear": "😨 ",
             "joy": "😊 ",
@@ -51,12 +32,10 @@ def show_book_by_filters():
             "anger": "😡 ",
         }
 
-        # Init session state
         if "selected_emotions" not in st.session_state:
             st.session_state.selected_emotions = []
 
-        st.write("Emotions")
-
+        # st.write("Emotions")
         cols = st.columns(len(emotion_map))
 
         for i, (emotion, emoji) in enumerate(emotion_map.items()):
@@ -73,43 +52,59 @@ def show_book_by_filters():
                 else:
                     st.session_state.selected_emotions.append(emotion)
 
-        # Use result
-        emotions = st.session_state.selected_emotions
-
-        if emotions:
-            params["emotions"] = emotions
-
         # ------------------
-        # Sentiment slider
+        # Formulaire filtres
         # ------------------
-        sentiment_options = {
-            " ": None,
-            "➖ Negative": "negative",
-            "0️⃣ Neutral": "neutral",
-            "➕ Positive": "positive",
-        }
+        with st.form("book_filters_form"):
 
-        selected_label = st.selectbox(
-            "Sentiment",
-            options=list(sentiment_options.keys()),
-            index=0
-        )
+            params = {}
 
-        sentiment = sentiment_options[selected_label]
+            for feature, config in dict_labels.items():
+                labels = config["labels"]
+                is_multi = config["multi_label"]
+                display_name = feature.replace("_", " ").capitalize()
 
-        if sentiment is not None:
-            params["sentiment"] = sentiment
+                if is_multi:
+                    selected = st.multiselect(display_name, labels)
+                    if selected:
+                        params[feature] = selected
+                else:
+                    selected = st.selectbox(display_name, [""] + labels)
+                    if selected:
+                        params[feature] = selected
 
+            # ------------------
+            # Sentiment
+            # ------------------
+            sentiment_options = {
+                " ": None,
+                "➖ Negative": "negative",
+                "0️⃣ Neutral": "neutral",
+                "➕ Positive": "positive",
+            }
 
+            selected_label = st.selectbox(
+                "Sentiment",
+                options=list(sentiment_options.keys()),
+                index=0
+            )
+
+            sentiment = sentiment_options[selected_label]
+            if sentiment is not None:
+                params["sentiment"] = sentiment
+
+            apply = st.form_submit_button("🔍 Apply filters")
+
+            # Injection des émotions dans params au moment du submit
+            emotions = st.session_state.selected_emotions
+            if emotions:
+                params["emotions"] = emotions
 
     with col_results:
-        apply = st.button("🔍 Apply filters")
-
         if apply:
             loader = st.empty()
 
             try:
-                # STEP 1: get matching book IDs
                 with loader:
                     book_spinner("Finding matching books...")
 
@@ -133,7 +128,6 @@ def show_book_by_filters():
                     st.warning("📕 No books found with those filters.")
                     return
 
-                # STEP 2: get book details
                 book_params = [("book_id_list", bid) for bid in book_ids]
 
                 with loader:

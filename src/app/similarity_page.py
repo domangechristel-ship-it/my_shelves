@@ -53,16 +53,7 @@ def show_similar_books() -> None:
         loader.empty()
 
         st.markdown(
-            f"""
-            <div style="
-                padding:15px;
-                border-radius:10px;
-                background-color:#f5f5f5;
-                margin-bottom:10px;
-            ">
-                📗 Similar books based on <b>{title}</b><br>
-            </div>
-            """,
+            f"#### 📚 Similar books based on **{title}**",
             unsafe_allow_html=True
         )
 
