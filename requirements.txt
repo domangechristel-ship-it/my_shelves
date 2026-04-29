@@ -26,3 +26,4 @@ torch
 torchvision
 faiss-cpu
 prefect
+pydantic

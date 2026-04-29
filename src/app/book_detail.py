@@ -71,7 +71,7 @@ def show_book_details(response_json: dict) -> None:
     goodreads_url = response_json.get("url", "")
     average_rating = response_json.get("average_rating", "")
     num_pages = response_json.get("num_pages", "")
-    series = response_json.get("series", "")
+    # series = response_json.get("series", "")
 
     # Petit nettoyage des valeurs
     if publication_year:
@@ -179,8 +179,8 @@ def show_book_details(response_json: dict) -> None:
                 unsafe_allow_html=True
             )
 
-        if series:
-            st.markdown(f"**Series**: {series}")
+        # if series:
+        #     st.markdown(f"**Series**: {series}")
 
         if goodreads_url:
             st.link_button("🔗 Open on Goodreads", goodreads_url)
