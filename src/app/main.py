@@ -35,11 +35,10 @@ Requirements
 import streamlit as st
 from show_pages import show_find_book, show_map, show_books_by_country
 from show_features import show_book_by_filters
-from similarity_page import show_similar_books
 from show_chatbot import show_chatbot
 
 st.set_page_config(
-    page_title="Book Shelves",
+    page_title="My Shelves",
     page_icon="📚",
     layout="wide",
 )
@@ -169,18 +168,17 @@ st.markdown(
 # --------------------------------------------------
 # Tabs
 # --------------------------------------------------
-tab_find_book, tab_country, tab_features, tab_similar, tab_chatbot = st.tabs(
+tab_find_book, tab_features, tab_country, tab_chatbot = st.tabs(
     [
         "🔎 Find book",
-        "🌍 Country",
         "🎛️ Features",
-        "📚 Similar books",
+        "🌍 Country",
         "💬 Chatbot",
     ]
 )
 
 # --------------------------------------------------
-# TAB 1 - FIND BOOK
+# TAB - FIND BOOK
 # --------------------------------------------------
 with tab_find_book:
     st.markdown('<div class="section-title">🔎 Find a book</div>', unsafe_allow_html=True)
@@ -188,7 +186,7 @@ with tab_find_book:
     show_find_book()
 
 # --------------------------------------------------
-# TAB 2 - COUNTRY
+# TAB - COUNTRY
 # --------------------------------------------------
 with tab_country:
     st.markdown('<div class="section-title">🌍 Explore books by country</div>', unsafe_allow_html=True)
@@ -199,7 +197,7 @@ with tab_country:
         show_books_by_country()
 
 # --------------------------------------------------
-# TAB 3 - FEATURES
+# TAB - FEATURES
 # --------------------------------------------------
 with tab_features:
     st.markdown('<div class="section-title">🎛️ Filter books by features</div>', unsafe_allow_html=True)
@@ -209,13 +207,13 @@ with tab_features:
 # --------------------------------------------------
 # TAB 4 - SIMILAR BOOKS
 # --------------------------------------------------
-with tab_similar:
-    st.markdown('<div class="section-title">📚 Similar books</div>', unsafe_allow_html=True)
+# with tab_similar:
+#     st.markdown('<div class="section-title">📚 Similar books</div>', unsafe_allow_html=True)
 
-    show_similar_books()
+    # show_similar_books()
 
 # --------------------------------------------------
-# TAB 5 - CHATBOT
+# TAB - CHATBOT
 # --------------------------------------------------
 with tab_chatbot:
     st.markdown('<div class="section-title">💬 Describe the book you are looking for</div>', unsafe_allow_html=True)

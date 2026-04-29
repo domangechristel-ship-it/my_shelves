@@ -37,6 +37,7 @@ Notes
 - API functions handle errors gracefully and return `None` when needed
 """
 import requests
+import pandas as pd
 import streamlit as st
 from params import  (
     API_URL_BOOK,
@@ -351,3 +352,70 @@ def book_spinner(text="Loading books..."):
         """,
         unsafe_allow_html=True,
     )
+
+def show_books_table(response_json: dict | list[dict]) -> None:
+    """
+    Display a books table with clickable cover images.
+
+    When clicking the image, it updates the URL with ?book_id=...
+    """
+
+    if not response_json:
+        st.info("No books to display.")
+        return
+
+    # Ensure list
+    data = [response_json] if isinstance(response_json, dict) else response_json
+    df = pd.DataFrame(data)
+
+    # Keep only needed columns
+    df = df[["image_url", "book_id", "title", "average_rating"]]
+    st.markdown(
+        """
+        <div style="
+            display: grid;
+            grid-template-columns: 1fr 1fr 4fr 1fr;
+            align-items: center;
+            padding: 12px 18px;
+            border-radius: 14px;
+            background: #f8fafc;
+            border: 1px solid #dbeafe;
+            margin-bottom: 12px;
+            color: #1e3a8a;
+            font-weight: 700;
+            font-size: 15px;
+        ">
+            <div>📖 Cover</div>
+            <div>🆔 Book ID</div>
+            <div>📘 Title</div>
+            <div>⭐ Rating</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Rows
+    for _, row in df.iterrows():
+        col1, col2, col3, col4 = st.columns([1, 1, 4, 1])
+
+        book_id = row["book_id"]
+        link = f"?book_id={book_id}"
+
+        col1.markdown(
+            f"""
+            <a href="{link}">
+                <img src="{row['image_url']}" style="height:90px;border-radius:6px;">
+            </a>
+            """,
+            unsafe_allow_html=True
+        )
+
+        col2.write(book_id)
+        col3.write(row["title"])
+        col4.write(f"⭐ {row['average_rating']}")
+
+        # 👉 subtle line between rows
+        st.markdown(
+            "<hr style='margin:10px 0; border: none; border-top: 1px solid #dbeafe;'>",
+            unsafe_allow_html=True
+        )

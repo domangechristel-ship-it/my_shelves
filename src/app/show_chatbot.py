@@ -1,9 +1,8 @@
 import requests
 import streamlit as st
 
-from show_pages import show_books_table
 from params import API_URL_BOOKS
-from helpers import get_chat_respons,book_spinner
+from helpers import get_chat_respons,book_spinner,show_books_table
 
 
 def show_chatbot() -> None:
@@ -25,7 +24,7 @@ def show_chatbot() -> None:
         "Number of books",
         min_value=1,
         max_value=20,
-        value=3,
+        value=5,
         key="chatbot_top_k",
     )
 
