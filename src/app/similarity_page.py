@@ -99,10 +99,9 @@ def show_similar_books() -> None:
         with loader:
             book_spinner("Retrieving book details...")
 
-        response_books = requests.get(
+        response_books = requests.post(
             API_URL_BOOKS,
-            params=params,
-            timeout=20
+            json={"book_id_list": book_ids}
         )
 
         loader.empty()

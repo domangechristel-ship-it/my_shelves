@@ -133,10 +133,9 @@ def show_book_by_filters():
                 with loader:
                     book_spinner("Retrieving book details...")
 
-                response_books = requests.get(
+                response_books = requests.post(
                     API_URL_BOOKS,
-                    params=book_params,
-                    timeout=20
+                    json={"book_id_list": book_ids}
                 )
 
                 loader.empty()
