@@ -36,6 +36,7 @@ import streamlit as st
 from show_pages import show_find_book, show_map, show_books_by_country
 from show_features import show_book_by_filters
 from show_chatbot import show_chatbot
+from timeline import show_timeline
 
 st.set_page_config(
     page_title="My Shelves",
@@ -168,11 +169,12 @@ st.markdown(
 # --------------------------------------------------
 # Tabs
 # --------------------------------------------------
-tab_find_book, tab_features, tab_country, tab_chatbot = st.tabs(
+tab_find_book, tab_features, tab_country, tab_timeline, tab_chatbot = st.tabs(
     [
         "🔎 Find book",
         "🎛️ Features",
         "🌍 Country",
+        "🕰️ Timeline",
         "💬 Chatbot",
     ]
 )
@@ -203,6 +205,14 @@ with tab_features:
     st.markdown('<div class="section-title">🎛️ Filter books by features</div>', unsafe_allow_html=True)
 
     show_book_by_filters()
+
+# --------------------------------------------------
+# TAB - Timeline
+# --------------------------------------------------
+with tab_timeline:
+    # st.markdown('<div class="section-title">🕰️ Timeline</div>', unsafe_allow_html=True)
+
+    show_timeline()
 
 # --------------------------------------------------
 # TAB 4 - SIMILAR BOOKS

@@ -129,7 +129,7 @@ def get_search_value_from_query_or_input() -> str:
     search_value = st.text_input(
         " ",
         key="search_value",
-        placeholder="Example: 1885731 or Harry Potter",
+        placeholder="Example: 1885731 or Millenium",
     )
 
     return search_value.strip()
