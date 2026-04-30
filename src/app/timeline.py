@@ -75,6 +75,8 @@ def clean_year(value) -> str:
 def fmt_century(c: int) -> str:
     return f"{abs(c)}th c. BCE" if c < 0 else f"{c}th c. CE"
 
+def era_anchor_id(era_order: int) -> str:
+    return f"era-{int(era_order)}"
 
 def render_books(book_cards: list) -> str:
     if not book_cards:
@@ -327,12 +329,76 @@ def show_timeline() -> None:
         z-index: 1;
         box-shadow: 0 1px 4px rgba(0,0,0,0.08);
       }
+    html {
+    scroll-behavior: smooth;
+    }
+
+    .era-nav {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    background: white;
+    padding: 12px 0;
+    margin-bottom: 18px;
+    border-bottom: 1px solid #e5e7eb;
+    overflow-x: auto;
+    white-space: nowrap;
+    }
+
+    .era-nav-inner {
+    display: flex;
+    gap: 10px;
+    }
+
+    .era-nav a {
+    text-decoration: none !important;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    color: #374151;
+    background: #f9fafb;
+    display: inline-block;
+    }
+
+    .era-nav a:hover {
+    background: #eef2ff;
+    border-color: #818cf8;
+    color: #3730a3;
+    }
     </style>
     """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div class="timeline-title">📜 Historical Timeline</div>
-    """, unsafe_allow_html=True)
+        <div id="top"></div>
+        <div class="timeline-title">📜 Historical Timeline</div>
+        """, unsafe_allow_html=True)
+
+    nav_items = ""
+
+    for _, row in df.iterrows():
+        anchor = era_anchor_id(row["era_order"])
+        era_name = html.escape(str(row["era"]))
+        icon = html.escape(str(row.get("icon", "•")))
+        order = int(row["era_order"])
+
+        nav_items += (
+            f'<a href="#{anchor}" title="{era_name}">'
+            f'{icon} {era_name}'
+            f'</a>'
+        )
+
+    st.markdown(
+        f"""
+        <div class="era-nav">
+        <div class="era-nav-inner">
+            {nav_items}
+        </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     # c1, c2, c3 = st.columns(3)
     # c1.metric("Eras covered", len(df))
@@ -358,14 +424,16 @@ def show_timeline() -> None:
         )
 
         st.markdown(f"""
-        <div class="era-card" style="background:{light_bg}; border-color:{border};">
+        <div id="{era_anchor_id(row["era_order"])}"
+            class="era-card"
+            style="background:{light_bg}; border-color:{border}; scroll-margin-top: 90px;">
           <div class="era-header-row">
             <span class="era-icon">{icon}</span>
             <span class="era-title" style="color:{color};">{html.escape(str(row["era"]))}</span>
-            <span class="era-pill"
+            <a href="#top" class="back-to-top" title="Back to top"><span class="era-pill"
                   style="background:{pill_bg}; color:{color}; border-color:{border};">
               {fmt_century(int(row["century"]))}
-            </span>
+            </span></a>
           </div>
 
           <ul class="events-list">{events_html}</ul>
