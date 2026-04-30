@@ -11,7 +11,7 @@ Purpose
 - Simplify maintenance (single place to update endpoints)
 
 """
-LOCAL = True
+LOCAL = False
 
 HOST = (
     "http://127.0.0.1:8000"
