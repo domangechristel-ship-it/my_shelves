@@ -6,7 +6,7 @@ from setuptools import setup
 
 with open("requirements.txt", encoding="utf-8") as f:
     content = f.readlines()
-requirements = [x.strip() for x in content if "git+" not in x]
+requirements = [x.strip() for x in content if x.strip() and not x.startswith("git+") and not x.startswith("--")]
 
 
 setup(name='my_shelves',
