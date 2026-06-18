@@ -19,14 +19,6 @@ A reader who finished a slow-burning, melancholy novel set in wartime France isn
 
 ---
 
-## Screenshots
-
-<!-- [screenshot: home page — filter search] -->
-<!-- [screenshot: interactive map view] -->
-<!-- [screenshot: RAG chatbot — query "Je cherche un livre pendant la seconde guerre mondiale en Italie"] -->
-
----
-
 ## How it works
 
 Raw book descriptions and user reviews are fed through an NLP enrichment pipeline that extracts six semantic attributes missing from standard metadata. Each book ends up with a structured feature vector — a mix of emotion scores, categorical labels, and geocoordinates — stored in BigQuery as a feature store.
